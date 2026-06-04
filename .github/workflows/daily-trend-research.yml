@@ -1,0 +1,35 @@
+name: 毎日の飲食トレンドリサーチ
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # 毎日09:00 JST（UTC 00:00）
+  workflow_dispatch:       # 手動実行も可能
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Python環境をセットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 依存パッケージをインストール
+        run: pip install anthropic
+
+      - name: トレンドリサーチを実行
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python scripts/daily_trend_research.py
+
+      - name: 結果をコミット・プッシュ
+        run: |
+          git config user.name "Claude Research Bot"
+          git config user.email "noreply@anthropic.com"
+          git add research/
+          git diff --staged --quiet || git commit -m "飲食トレンドリサーチ $(date '+%Y-%m-%d')"
+          git push origin main
