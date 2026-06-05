@@ -78,7 +78,7 @@ def add_line(slide, left, top, width, color=C_ACCENT, height=Pt(1.5)):
     return rect
 
 
-def slide_number(slide, num, total=12):
+def slide_number(slide, num, total=20):
     add_textbox(slide, f"{num} / {total}",
                 Inches(12.5), Inches(7.1), Inches(0.8), Inches(0.3),
                 size=9, color=C_GRAY, align=PP_ALIGN.RIGHT)
@@ -758,6 +758,607 @@ def s11_strategy(prs):
     return sl
 
 
+def s13_open_strategy(prs):
+    """オープン戦略"""
+    sl = blank_slide(prs)
+    bg(sl)
+    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
+
+    add_textbox(sl, "LAUNCH STRATEGY", Inches(0.6), Inches(0.4), Inches(6), Inches(0.5),
+                size=11, bold=True, color=C_ACCENT)
+    add_textbox(sl, "オープン戦略　――　開業前から火をつける", Inches(0.6), Inches(0.75),
+                Inches(11), Inches(0.7), size=28, bold=True, color=C_WHITE)
+    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
+
+    # タイムライン
+    timeline = [
+        ("-6ヶ月", "仕込み期", [
+            "物件契約・内装着工",
+            "Instagramアカウント開設（コンセプト発信開始）",
+            "インフルエンサーリスト作成（50名以上）",
+            "メニュー最終決定・レシピ標準化",
+        ]),
+        ("-3ヶ月", "認知獲得期", [
+            "マイクロインフルエンサー（1万〜10万）20名招待",
+            "工事中の様子・仕込み動画をリール投稿",
+            "Googleビジネスプロフィール登録・MEO開始",
+            "プレスリリース・食メディアへのアプローチ",
+        ]),
+        ("-1ヶ月", "加熱期", [
+            "メガインフルエンサー（10万〜）5名招待",
+            "プレオープン（関係者・常連候補・地元住民）",
+            "Instagramカウントダウン投稿",
+            "Googleマップ写真・口コミ初期投稿の準備",
+        ]),
+        ("OPEN", "爆発期", [
+            "オープン当日ライブ配信",
+            "初月は意図的に「並ばせる」演出で話題化",
+            "日次で売上・客数・SNS反応をモニタリング",
+            "口コミ返信を毎日・MEO評価を週次チェック",
+        ]),
+    ]
+
+    for i, (time, phase, items) in enumerate(timeline):
+        x = Inches(0.4 + i * 3.22)
+        # 時期バッジ
+        bg_c = C_ACCENT if time == "OPEN" else RGBColor(0x3A, 0x2A, 0x08)
+        txt_c = C_BG if time == "OPEN" else C_ACCENT
+        add_rect(sl, x, Inches(1.75), Inches(3.0), Inches(0.4), bg_c)
+        add_textbox(sl, time, x + Inches(0.05), Inches(1.78),
+                    Inches(2.9), Inches(0.34), size=14, bold=True,
+                    color=txt_c, align=PP_ALIGN.CENTER)
+        # フェーズ名
+        add_textbox(sl, phase, x + Inches(0.1), Inches(2.2),
+                    Inches(2.8), Inches(0.35), size=13, bold=True, color=C_WHITE)
+        # アクション
+        add_rect(sl, x, Inches(2.6), Inches(3.0), Inches(4.55),
+                 RGBColor(0x2A, 0x1E, 0x12))
+        for j, item in enumerate(items):
+            add_rect(sl, x + Inches(0.12), Inches(2.72 + j * 1.05),
+                     Inches(0.06), Inches(0.72), C_ACCENT)
+            add_textbox(sl, item, x + Inches(0.28), Inches(2.72 + j * 1.05),
+                        Inches(2.55), Inches(0.9), size=11, color=C_LIGHT)
+
+    add_textbox(sl,
+                "参考：ひまり商店（新橋）は開業前からのインフルエンサー戦略で初月1,700万円を達成",
+                Inches(0.5), Inches(7.1), Inches(12.3), Inches(0.3),
+                size=11, color=C_GRAY, align=PP_ALIGN.CENTER, italic=True)
+
+    slide_number(sl, 13)
+    return sl
+
+
+def s14_fc_strategy(prs):
+    """FC展開戦略"""
+    sl = blank_slide(prs)
+    bg(sl)
+    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
+
+    add_textbox(sl, "FC STRATEGY", Inches(0.6), Inches(0.4), Inches(6), Inches(0.5),
+                size=11, bold=True, color=C_ACCENT)
+    add_textbox(sl, "FC展開戦略　――　型をつくり、型で増やす", Inches(0.6), Inches(0.75),
+                Inches(11), Inches(0.7), size=28, bold=True, color=C_WHITE)
+    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
+
+    # 左：FC設計
+    add_textbox(sl, "FCパッケージ設計（予定）",
+                Inches(0.6), Inches(1.75), Inches(5.5), Inches(0.4),
+                size=13, bold=True, color=C_ACCENT)
+
+    fc_items = [
+        ("加盟金", "200万円", "ブランド使用権・初期研修込み"),
+        ("ロイヤリティ", "売上の3%", "本部サポート・仕入支援含む"),
+        ("保証金", "100万円", "退会時返還"),
+        ("加盟者の初期投資目安", "1,500〜2,000万円", "物件・内装・設備込み"),
+        ("FC加盟者の想定月商", "600〜720万円", "直営モデルの再現"),
+        ("FCオーナーの想定手残り", "月60〜90万円", "ロイヤリティ・返済後"),
+    ]
+    for i, (k, v, note) in enumerate(fc_items):
+        y = Inches(2.2 + i * 0.65)
+        bg_c = RGBColor(0x3A, 0x2A, 0x08) if "手残り" in k else RGBColor(0x2A, 0x1E, 0x12)
+        add_rect(sl, Inches(0.5), y, Inches(6.0), Inches(0.6), bg_c)
+        add_textbox(sl, k, Inches(0.65), y + Inches(0.1),
+                    Inches(2.5), Inches(0.42), size=12, color=C_GRAY)
+        vc = C_ACCENT if "手残り" in k else C_WHITE
+        add_textbox(sl, v, Inches(3.0), y + Inches(0.05),
+                    Inches(1.8), Inches(0.5), size=15, bold=True, color=vc)
+        add_textbox(sl, note, Inches(4.7), y + Inches(0.1),
+                    Inches(1.7), Inches(0.42), size=10, color=C_GRAY)
+
+    # 右：FC募集ターゲットと強み
+    add_textbox(sl, "FC加盟者ターゲット像",
+                Inches(7.2), Inches(1.75), Inches(5.5), Inches(0.4),
+                size=13, bold=True, color=C_ACCENT)
+    targets = [
+        ("飲食経験者の独立志望者", "元料理人・飲食チェーン出身者。\n現場力があり、ブランドの型を活かせる。"),
+        ("副業・投資目的の個人オーナー", "他業種からの参入。オーナー不在でも\n回るオペレーションを本部が支援。"),
+        ("地方への展開パートナー", "東京モデルを地方に持ち込む\nエリアFCオーナー。複数店舗可。"),
+    ]
+    for i, (title, desc) in enumerate(targets):
+        y = Inches(2.2 + i * 1.5)
+        add_rect(sl, Inches(7.0), y, Inches(5.8), Inches(1.35),
+                 RGBColor(0x2A, 0x1E, 0x12))
+        add_rect(sl, Inches(7.0), y, Inches(0.08), Inches(1.35), C_ACCENT)
+        add_textbox(sl, title, Inches(7.2), y + Inches(0.1),
+                    Inches(5.4), Inches(0.38), size=14, bold=True, color=C_WHITE)
+        add_textbox(sl, desc, Inches(7.2), y + Inches(0.52),
+                    Inches(5.4), Inches(0.7), size=12, color=C_LIGHT)
+
+    add_textbox(sl, "FC本部収益（100店舗時）",
+                Inches(7.2), Inches(6.75), Inches(5.5), Inches(0.28),
+                size=12, bold=True, color=C_ACCENT)
+    add_textbox(sl,
+                "100店×720万×3%ロイヤリティ ＝ 月2,160万円 / 年2.6億円",
+                Inches(7.0), Inches(7.05), Inches(5.8), Inches(0.32),
+                size=12, color=C_WHITE)
+
+    slide_number(sl, 14)
+    return sl
+
+
+def s15_location(prs):
+    """立地・出店戦略"""
+    sl = blank_slide(prs)
+    bg(sl)
+    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
+
+    add_textbox(sl, "LOCATION STRATEGY", Inches(0.6), Inches(0.4), Inches(6), Inches(0.5),
+                size=11, bold=True, color=C_ACCENT)
+    add_textbox(sl, "立地・出店戦略　――　勝てる場所を選ぶ", Inches(0.6), Inches(0.75),
+                Inches(11), Inches(0.7), size=28, bold=True, color=C_WHITE)
+    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
+
+    # 立地スコアリング基準
+    add_textbox(sl, "物件選定スコアリング基準",
+                Inches(0.6), Inches(1.75), Inches(5.5), Inches(0.4),
+                size=13, bold=True, color=C_ACCENT)
+
+    criteria = [
+        ("乗降者数", "5万人/日以上", "◎"),
+        ("駅徒歩", "5分以内・路面優先", "◎"),
+        ("坪数", "15〜25坪（理想20坪）", "◎"),
+        ("家賃", "50万円以内（坪2.5万以下）", "◎"),
+        ("設備", "重飲食対応・居抜き優先", "◎"),
+        ("競合", "同業態が近くに集中していない", "△"),
+    ]
+    for i, (k, v, mark) in enumerate(criteria):
+        y = Inches(2.2 + i * 0.62)
+        add_rect(sl, Inches(0.5), y, Inches(6.0), Inches(0.58),
+                 RGBColor(0x2A, 0x1E, 0x12))
+        add_textbox(sl, k, Inches(0.65), y + Inches(0.1),
+                    Inches(1.3), Inches(0.4), size=12, color=C_GRAY)
+        add_textbox(sl, v, Inches(1.9), y + Inches(0.1),
+                    Inches(3.2), Inches(0.4), size=12, color=C_WHITE)
+        mc = C_ACCENT if mark == "◎" else C_GRAY
+        add_textbox(sl, mark, Inches(5.7), y + Inches(0.08),
+                    Inches(0.6), Inches(0.42), size=16, bold=True, color=mc,
+                    align=PP_ALIGN.CENTER)
+
+    # 右：エリア別分析
+    add_textbox(sl, "優先出店エリア（1号店候補）",
+                Inches(7.2), Inches(1.75), Inches(5.5), Inches(0.4),
+                size=13, bold=True, color=C_ACCENT)
+
+    areas = [
+        ("★ 三軒茶屋", "約10万人/日", "住宅街×夜の人通り◎\n飲食激戦区だが差別化余地大\n渋谷から2駅の好立地"),
+        ("★ 目黒",     "約12万人/日", "30〜40代富裕層多い\n平均客単価が高く取りやすい\nランチ需要も強い"),
+        ("★ 自由が丘", "約8万人/日",  "感度高い客層・SNS拡散◎\nカフェ・グルメ激戦区\nブランドイメージ向上に寄与"),
+    ]
+    for i, (name, riders, desc) in enumerate(areas):
+        y = Inches(2.2 + i * 1.6)
+        add_rect(sl, Inches(7.0), y, Inches(5.8), Inches(1.45),
+                 RGBColor(0x2A, 0x1E, 0x12))
+        add_textbox(sl, name, Inches(7.15), y + Inches(0.08),
+                    Inches(2.2), Inches(0.4), size=16, bold=True, color=C_ACCENT)
+        add_textbox(sl, riders, Inches(9.3), y + Inches(0.1),
+                    Inches(2.0), Inches(0.36), size=13, color=C_WHITE,
+                    align=PP_ALIGN.RIGHT)
+        add_textbox(sl, desc, Inches(7.15), y + Inches(0.55),
+                    Inches(5.5), Inches(0.78), size=12, color=C_LIGHT)
+
+    add_textbox(sl,
+                "1号店は三軒茶屋〜目黒エリアで検討。居抜き物件を優先し初期投資を抑制する。",
+                Inches(0.5), Inches(7.1), Inches(12.3), Inches(0.3),
+                size=12, bold=True, color=C_ACCENT, align=PP_ALIGN.CENTER)
+
+    slide_number(sl, 15)
+    return sl
+
+
+def s16_brand_sns(prs):
+    """ブランド・SNS戦略"""
+    sl = blank_slide(prs)
+    bg(sl)
+    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
+
+    add_textbox(sl, "BRAND & SNS", Inches(0.6), Inches(0.4), Inches(6), Inches(0.5),
+                size=11, bold=True, color=C_ACCENT)
+    add_textbox(sl, "ブランド・SNS戦略　――　「然」を育てる", Inches(0.6), Inches(0.75),
+                Inches(11), Inches(0.7), size=28, bold=True, color=C_WHITE)
+    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
+
+    # ブランド展開構造
+    add_textbox(sl, "ブランドアーキテクチャ",
+                Inches(0.6), Inches(1.75), Inches(5.5), Inches(0.4),
+                size=13, bold=True, color=C_ACCENT)
+
+    add_rect(sl, Inches(2.0), Inches(2.2), Inches(2.8), Inches(0.52), C_ACCENT)
+    add_textbox(sl, "然（ぜん）", Inches(2.0), Inches(2.23),
+                Inches(2.8), Inches(0.44), size=18, bold=True,
+                color=C_BG, align=PP_ALIGN.CENTER)
+
+    branches = [
+        ("肉酒場 然", "1号店〜\n糀漬け肉×石板焼き", Inches(0.3)),
+        ("魚酒場 然", "2年目〜\n魚介×発酵", Inches(2.5)),
+        ("鶏酒場 然", "3年目〜\nやきとり×糀", Inches(4.7)),
+    ]
+    for name, desc, x in branches:
+        add_rect(sl, x, Inches(3.35), Inches(2.0), Inches(0.42),
+                 RGBColor(0x3A, 0x2A, 0x08))
+        add_textbox(sl, name, x + Inches(0.05), Inches(3.38),
+                    Inches(1.9), Inches(0.36), size=13, bold=True,
+                    color=C_ACCENT, align=PP_ALIGN.CENTER)
+        add_textbox(sl, desc, x + Inches(0.05), Inches(3.82),
+                    Inches(1.9), Inches(0.55), size=10, color=C_GRAY,
+                    align=PP_ALIGN.CENTER)
+
+    # SEO/MEO/AIO
+    add_textbox(sl, "SEO / MEO / AIO設計",
+                Inches(0.6), Inches(4.55), Inches(5.5), Inches(0.4),
+                size=13, bold=True, color=C_ACCENT)
+    seo_items = [
+        ("SEO", "「肉酒場」「糀漬け定食」＋エリア名でコンテンツ設計"),
+        ("MEO", "Googleマップ説明に「糀漬け肉定食居酒屋」を明記。写真・口コミを週次更新"),
+        ("AIO", "AI検索で「糀漬け肉定食の居酒屋」として説明されやすい構造的な記述"),
+        ("指名", "「然（ぜん）」を固有名詞として育て、リピーター指名検索を増やす"),
+    ]
+    for i, (tag, desc) in enumerate(seo_items):
+        y = Inches(5.0 + i * 0.46)
+        add_rect(sl, Inches(0.5), y, Inches(0.55), Inches(0.38), C_ACCENT)
+        add_textbox(sl, tag, Inches(0.5), y + Inches(0.02),
+                    Inches(0.55), Inches(0.34), size=10, bold=True,
+                    color=C_BG, align=PP_ALIGN.CENTER)
+        add_textbox(sl, desc, Inches(1.15), y,
+                    Inches(5.2), Inches(0.4), size=11, color=C_LIGHT)
+
+    # 右：SNSコンテンツ設計
+    add_textbox(sl, "SNSコンテンツ設計（Instagram）",
+                Inches(7.2), Inches(1.75), Inches(5.5), Inches(0.4),
+                size=13, bold=True, color=C_ACCENT)
+
+    contents = [
+        ("体験動画（リール）", "石板の煙・音・肉の断面。\n「見ていて気持ちいい」が拡散の鍵。", "週3本"),
+        ("仕込みの裏側", "糀漬けの工程・仕込み動画。\n「作り手が見える」信頼感を演出。", "週2本"),
+        ("インフルエンサーUGC", "招待者の投稿をリポスト。\n他者目線の口コミが最強の広告。", "随時"),
+        ("オーナーの想い発信", "開業ストーリー・日々の学び。\n「この人から買いたい」を育てる。", "週1本"),
+    ]
+    for i, (title, body, freq) in enumerate(contents):
+        y = Inches(2.2 + i * 1.22)
+        add_rect(sl, Inches(7.0), y, Inches(5.8), Inches(1.1),
+                 RGBColor(0x2A, 0x1E, 0x12))
+        add_textbox(sl, title, Inches(7.15), y + Inches(0.05),
+                    Inches(3.8), Inches(0.36), size=13, bold=True, color=C_WHITE)
+        add_rect(sl, Inches(11.3), y + Inches(0.08), Inches(1.3), Inches(0.3),
+                 RGBColor(0x3A, 0x2A, 0x08))
+        add_textbox(sl, freq, Inches(11.3), y + Inches(0.08),
+                    Inches(1.3), Inches(0.3), size=10, color=C_ACCENT,
+                    align=PP_ALIGN.CENTER)
+        add_textbox(sl, body, Inches(7.15), y + Inches(0.45),
+                    Inches(5.5), Inches(0.55), size=11, color=C_LIGHT)
+
+    slide_number(sl, 16)
+    return sl
+
+
+def s17_operations(prs):
+    """オペレーション・仕込みシステム"""
+    sl = blank_slide(prs)
+    bg(sl)
+    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
+
+    add_textbox(sl, "OPERATIONS", Inches(0.6), Inches(0.4), Inches(6), Inches(0.5),
+                size=11, bold=True, color=C_ACCENT)
+    add_textbox(sl, "オペレーション設計　――　型が利益を生む", Inches(0.6), Inches(0.75),
+                Inches(11), Inches(0.7), size=28, bold=True, color=C_WHITE)
+    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
+
+    add_textbox(sl, "仕込みフロー（前日→当日）",
+                Inches(0.6), Inches(1.75), Inches(5.5), Inches(0.4),
+                size=13, bold=True, color=C_ACCENT)
+
+    steps = [
+        ("前日 15:00", "サガリ・豚・鶏を糀に漬け込み（各48h）"),
+        ("前日 17:00", "低温調理器にセット（サガリ55℃×4h）"),
+        ("当日 10:00", "仕込み完了・ポーション確認・ライン設定"),
+        ("11:30", "ランチ営業開始（石板+トッピング仕上げ30秒）"),
+        ("14:00", "ランチ終了・ディナー仕込み補充・清掃"),
+        ("17:30", "ディナー営業開始"),
+        ("22:30", "閉店・翌日仕込み開始"),
+    ]
+    for i, (time, action) in enumerate(steps):
+        y = Inches(2.2 + i * 0.57)
+        add_rect(sl, Inches(0.5), y, Inches(6.0), Inches(0.53),
+                 RGBColor(0x2A, 0x1E, 0x12) if i % 2 == 0 else RGBColor(0x22, 0x18, 0x0E))
+        add_textbox(sl, time, Inches(0.65), y + Inches(0.08),
+                    Inches(1.3), Inches(0.38), size=11, bold=True, color=C_ACCENT)
+        add_textbox(sl, action, Inches(2.0), y + Inches(0.08),
+                    Inches(4.3), Inches(0.38), size=12, color=C_WHITE)
+
+    # 右：FC再現性の3本柱
+    add_textbox(sl, "FC展開を可能にする3つの仕組み",
+                Inches(7.2), Inches(1.75), Inches(5.5), Inches(0.4),
+                size=13, bold=True, color=C_ACCENT)
+
+    pillars = [
+        ("① 低温調理×前日仕込み",
+         "温度・時間が数値化されているため\n誰が作っても同じ品質に仕上がる。\n料理経験が浅いスタッフでも対応可能。"),
+        ("② 石板仕上げ（30秒）",
+         "調理の最終工程は石板で30秒焼くだけ。\nオペレーションが極めてシンプルで\nホール兼務も可能なスキーム。"),
+        ("③ レシピ・マニュアルの完全数値化",
+         "仕込み温度・時間・グラム数を\n全てマニュアル化。SVが巡回研修で\n品質を均一化する体制を構築。"),
+    ]
+    for i, (title, body) in enumerate(pillars):
+        y = Inches(2.2 + i * 1.6)
+        add_rect(sl, Inches(7.0), y, Inches(5.8), Inches(1.45),
+                 RGBColor(0x2A, 0x1E, 0x12))
+        add_rect(sl, Inches(7.0), y, Inches(0.08), Inches(1.45), C_ACCENT)
+        add_textbox(sl, title, Inches(7.2), y + Inches(0.08),
+                    Inches(5.4), Inches(0.4), size=14, bold=True, color=C_WHITE)
+        add_textbox(sl, body, Inches(7.2), y + Inches(0.55),
+                    Inches(5.4), Inches(0.78), size=12, color=C_LIGHT)
+
+    add_textbox(sl,
+                "「低温調理×石板仕上げ」は職人不要のオペレーションを実現し、FC展開の最大の武器になる。",
+                Inches(0.5), Inches(7.1), Inches(12.3), Inches(0.3),
+                size=12, bold=True, color=C_ACCENT, align=PP_ALIGN.CENTER)
+
+    slide_number(sl, 17)
+    return sl
+
+
+def s18_data_kpi(prs):
+    """データ経営・KPI管理"""
+    sl = blank_slide(prs)
+    bg(sl)
+    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
+
+    add_textbox(sl, "DATA MANAGEMENT", Inches(0.6), Inches(0.4), Inches(6), Inches(0.5),
+                size=11, bold=True, color=C_ACCENT)
+    add_textbox(sl, "データ経営　――　感覚ではなく数字で動く", Inches(0.6), Inches(0.75),
+                Inches(11), Inches(0.7), size=28, bold=True, color=C_WHITE)
+    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
+
+    # KPI管理サイクル
+    add_textbox(sl, "KPI管理サイクル",
+                Inches(0.6), Inches(1.75), Inches(5.5), Inches(0.4),
+                size=13, bold=True, color=C_ACCENT)
+
+    cycles = [
+        ("日次", [
+            "客数・客単価・売上",
+            "時間帯別回転数",
+            "メニュー別注文数",
+            "SNSエンゲージメント",
+        ]),
+        ("週次", [
+            "原価率・人件費率",
+            "FL比率の確認",
+            "口コミ・MEO評価",
+            "前週比・前年比",
+        ]),
+        ("月次", [
+            "損益計算書の確認",
+            "リピート率・新規比率",
+            "メニュー見直し判断",
+            "広告ROI測定",
+        ]),
+    ]
+    for i, (freq, items) in enumerate(cycles):
+        x = Inches(0.5 + i * 2.2)
+        add_rect(sl, x, Inches(2.2), Inches(2.0), Inches(0.4), C_ACCENT)
+        add_textbox(sl, freq, x, Inches(2.23), Inches(2.0), Inches(0.34),
+                    size=13, bold=True, color=C_BG, align=PP_ALIGN.CENTER)
+        add_rect(sl, x, Inches(2.6), Inches(2.0), Inches(3.0),
+                 RGBColor(0x2A, 0x1E, 0x12))
+        for j, item in enumerate(items):
+            add_textbox(sl, f"• {item}", x + Inches(0.1), Inches(2.72 + j * 0.65),
+                        Inches(1.8), Inches(0.58), size=11, color=C_LIGHT)
+
+    # 右：重要KPI目標値
+    add_textbox(sl, "重要KPI目標値（1号店・安定期）",
+                Inches(7.2), Inches(1.75), Inches(5.5), Inches(0.4),
+                size=13, bold=True, color=C_ACCENT)
+
+    kpis = [
+        ("月商目標", "720万円", "安定期"),
+        ("損益分岐点", "460万円", "目標の64%"),
+        ("ランチ回転数", "1.8回転", "30席×25日"),
+        ("ディナー回転数", "1.2回転", "30席×25日"),
+        ("原価率", "30%以下", "FL管理"),
+        ("人件費率", "18〜22%", "体制次第"),
+        ("FL比率", "48〜52%", "目標50%以下"),
+        ("リピート率", "60%以上", "6ヶ月後目標"),
+        ("Googleマップ評価", "4.0以上維持", "MEO管理"),
+        ("Instagram フォロワー", "1万人（1年目）", "SNS資産"),
+    ]
+    for i, (k, v, note) in enumerate(kpis):
+        y = Inches(2.2 + i * 0.48)
+        bg_c = RGBColor(0x3A, 0x2A, 0x08) if i % 2 == 0 else RGBColor(0x2A, 0x1E, 0x12)
+        add_rect(sl, Inches(7.0), y, Inches(5.8), Inches(0.45), bg_c)
+        add_textbox(sl, k, Inches(7.15), y + Inches(0.05),
+                    Inches(2.5), Inches(0.36), size=11, color=C_GRAY)
+        add_textbox(sl, v, Inches(9.5), y + Inches(0.03),
+                    Inches(1.8), Inches(0.38), size=13, bold=True, color=C_WHITE)
+        add_textbox(sl, note, Inches(11.2), y + Inches(0.07),
+                    Inches(1.4), Inches(0.34), size=10, color=C_GRAY,
+                    align=PP_ALIGN.RIGHT)
+
+    add_textbox(sl,
+                "参考：つむぎ堂は毎日注文数・売上をスタッフと共有するデータ経営で坪月商57万円を実現",
+                Inches(0.5), Inches(7.1), Inches(12.3), Inches(0.3),
+                size=11, color=C_GRAY, align=PP_ALIGN.CENTER, italic=True)
+
+    slide_number(sl, 18)
+    return sl
+
+
+def s19_risk(prs):
+    """リスクと対策"""
+    sl = blank_slide(prs)
+    bg(sl)
+    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
+
+    add_textbox(sl, "RISK MANAGEMENT", Inches(0.6), Inches(0.4), Inches(6), Inches(0.5),
+                size=11, bold=True, color=C_ACCENT)
+    add_textbox(sl, "リスクと対策　――　想定して備える", Inches(0.6), Inches(0.75),
+                Inches(11), Inches(0.7), size=28, bold=True, color=C_WHITE)
+    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
+
+    risks = [
+        {
+            "risk": "① 立ち上げ期の売上未達",
+            "level": "高",
+            "level_c": C_RED,
+            "cause": "新店認知不足・口コミ形成に時間",
+            "action": "開業3ヶ月前からインフルエンサー戦略を実行。\n手元残金630万円で最大6ヶ月の赤字に耐えられる財務設計。",
+        },
+        {
+            "risk": "② 人材採用・定着の問題",
+            "level": "中",
+            "level_c": C_ACCENT,
+            "cause": "飲食業界の人手不足・離職率の高さ",
+            "action": "時給を相場より50〜100円高く設定し採用競争力を確保。\n仕組み化により属人依存を排除。常時採用を継続。",
+        },
+        {
+            "risk": "③ 原材料費の高騰",
+            "level": "中",
+            "level_c": C_ACCENT,
+            "cause": "牛サガリの価格変動・円安影響",
+            "action": "複数仕入れ先を確保し価格交渉力を維持。\n鶏・豚メニューの比率調整で原価率をコントロール。",
+        },
+        {
+            "risk": "④ 競合の模倣・追随",
+            "level": "低",
+            "level_c": C_GREEN,
+            "cause": "糀漬け肉定食業態の競合参入",
+            "action": "ブランド「然」の商標登録で保護（第43類・飲食）。\n先行者優位と顧客ロイヤリティで差別化を維持。",
+        },
+        {
+            "risk": "⑤ FC加盟者の品質管理",
+            "level": "中",
+            "level_c": C_ACCENT,
+            "cause": "FC展開後のQSCばらつき",
+            "action": "SV定期巡回（月1回以上）・抜き打ち覆面調査の実施。\n数値基準を下回る店舗には改善プログラムを発動。",
+        },
+    ]
+
+    for i, r in enumerate(risks):
+        y = Inches(1.75 + i * 1.02)
+        add_rect(sl, Inches(0.5), y, Inches(12.3), Inches(0.94),
+                 RGBColor(0x2A, 0x1E, 0x12))
+        # レベルバッジ
+        add_rect(sl, Inches(0.5), y, Inches(0.5), Inches(0.94), r["level_c"])
+        add_textbox(sl, r["level"], Inches(0.5), y + Inches(0.28),
+                    Inches(0.5), Inches(0.36), size=11, bold=True,
+                    color=C_BG, align=PP_ALIGN.CENTER)
+        # リスク名
+        add_textbox(sl, r["risk"], Inches(1.1), y + Inches(0.05),
+                    Inches(3.0), Inches(0.38), size=13, bold=True, color=C_WHITE)
+        # 原因
+        add_textbox(sl, r["cause"], Inches(1.1), y + Inches(0.48),
+                    Inches(3.0), Inches(0.38), size=11, color=C_GRAY, italic=True)
+        # 対策
+        add_rect(sl, Inches(4.3), y + Inches(0.08), Inches(0.5), Inches(0.28),
+                 C_ACCENT)
+        add_textbox(sl, "対策", Inches(4.3), y + Inches(0.08),
+                    Inches(0.5), Inches(0.28), size=9, bold=True,
+                    color=C_BG, align=PP_ALIGN.CENTER)
+        add_textbox(sl, r["action"], Inches(4.9), y + Inches(0.05),
+                    Inches(7.7), Inches(0.84), size=11, color=C_LIGHT)
+
+    slide_number(sl, 19)
+    return sl
+
+
+def s20_action_plan(prs):
+    """今後90日のアクションプラン"""
+    sl = blank_slide(prs)
+    bg(sl)
+    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
+
+    add_textbox(sl, "ACTION PLAN", Inches(0.6), Inches(0.4), Inches(6), Inches(0.5),
+                size=11, bold=True, color=C_ACCENT)
+    add_textbox(sl, "今後90日のアクションプラン", Inches(0.6), Inches(0.75),
+                Inches(11), Inches(0.7), size=28, bold=True, color=C_WHITE)
+    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
+
+    phases_90 = [
+        {
+            "period": "0〜30日",
+            "theme": "仕込みと準備",
+            "color": RGBColor(0x3A, 0x2A, 0x08),
+            "items": [
+                "□ 会社設立（登記・口座開設）",
+                "□ 「肉酒場 然」商標調査・出願",
+                "□ 物件情報収集（三軒茶屋・目黒・自由が丘）",
+                "□ 日本政策金融公庫への相談・申込",
+                "□ Instagramアカウント開設",
+            ],
+        },
+        {
+            "period": "30〜60日",
+            "theme": "物件決定と資金確定",
+            "color": RGBColor(0x3A, 0x28, 0x05),
+            "items": [
+                "□ 物件内見・スコアリング評価",
+                "□ 公庫面談・融資確定",
+                "□ 物件契約・内装業者選定",
+                "□ インフルエンサーリスト作成（50名）",
+                "□ メニュー最終試作・原価計算確定",
+            ],
+        },
+        {
+            "period": "60〜90日",
+            "theme": "着工と認知獲得",
+            "color": RGBColor(0x3A, 0x2E, 0x08),
+            "items": [
+                "□ 内装・厨房工事着工",
+                "□ スタッフ採用開始",
+                "□ インフルエンサー招待DM開始",
+                "□ Googleビジネスプロフィール登録",
+                "□ POSシステム・決済端末導入",
+            ],
+        },
+    ]
+
+    for i, p in enumerate(phases_90):
+        x = Inches(0.5 + i * 4.25)
+        add_rect(sl, x, Inches(1.75), Inches(4.0), Inches(0.42), p["color"])
+        add_textbox(sl, p["period"],
+                    x + Inches(0.1), Inches(1.78), Inches(1.5), Inches(0.36),
+                    size=12, bold=True, color=C_ACCENT)
+        add_textbox(sl, p["theme"],
+                    x + Inches(1.6), Inches(1.78), Inches(2.2), Inches(0.36),
+                    size=11, color=C_WHITE)
+        add_rect(sl, x, Inches(2.17), Inches(4.0), Inches(4.6),
+                 RGBColor(0x2A, 0x1E, 0x12))
+        for j, item in enumerate(p["items"]):
+            add_textbox(sl, item,
+                        x + Inches(0.15), Inches(2.28 + j * 0.84),
+                        Inches(3.7), Inches(0.76), size=12, color=C_LIGHT)
+
+    # 最終ゴール
+    add_rect(sl, Inches(0.5), Inches(7.0), Inches(12.3), Inches(0.38),
+             RGBColor(0x3A, 0x2A, 0x08))
+    add_textbox(sl,
+                "90日後のゴール：物件契約完了・融資確定・SNS認知スタート　→　開業へ",
+                Inches(0.5), Inches(7.03), Inches(12.3), Inches(0.32),
+                size=13, bold=True, color=C_ACCENT, align=PP_ALIGN.CENTER)
+
+    slide_number(sl, 20)
+    return sl
+
+
 def s12_closing(prs):
     """クロージング"""
     sl = blank_slide(prs)
@@ -793,7 +1394,7 @@ def s12_closing(prs):
                 Inches(0.8), Inches(4.7), Inches(6.5), Inches(2.0),
                 size=13, color=C_GRAY, italic=True)
 
-    slide_number(sl, 12)
+    slide_number(sl, 19)  # closingは最後のスライド
     return sl
 
 
@@ -811,6 +1412,14 @@ def main():
     s09_finance(prs)
     s10_roadmap(prs)
     s11_strategy(prs)
+    s13_open_strategy(prs)
+    s14_fc_strategy(prs)
+    s15_location(prs)
+    s16_brand_sns(prs)
+    s17_operations(prs)
+    s18_data_kpi(prs)
+    s19_risk(prs)
+    s20_action_plan(prs)
     s12_closing(prs)
 
     os.makedirs("reports", exist_ok=True)
