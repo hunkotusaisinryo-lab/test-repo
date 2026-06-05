@@ -50,8 +50,8 @@ YEARS  = list(range(1, 11))
 ZEN_REV   = [0.4, 1.7, 4.3, 13.0, 25.9, 56.2, 86.4, 103.7, 120.9, 138.2]
 # 【新業態（1人OPブランド）】Year4〜展開
 NEW_REV   = [0.0, 0.0, 0.0,  0.5,  2.5,  6.0, 12.0,  22.0,  38.0,  55.0]
-# 【SNS・デザインコンサル】Year2〜展開
-CON_REV   = [0.0, 0.3, 0.6,  1.0,  1.5,  2.0,  2.5,   3.0,   3.5,   4.0]
+# 【SNS事業部（コンサル＋クリエイティブ）】Year3〜展開
+CON_REV   = [0.0, 0.0, 0.5,  1.2,  2.0,  3.0,  4.5,   6.5,   9.0,  12.0]
 
 # グループ合計年商
 REVENUE   = [round(z+n+c, 1) for z, n, c in zip(ZEN_REV, NEW_REV, CON_REV)]
@@ -62,16 +62,16 @@ STORES    = [1, 2, 5, 15, 30, 65, 100, 120, 140, 160]
 # 本部経費（億円）Year3〜
 HQ_COST   = [0.0, 0.0, 0.3, 0.8, 1.5, 2.5, 4.0, 5.0, 6.0, 7.0]
 
-# 商標料・システム料（売上の1%）
-ROYALTY   = [round(r * 0.01, 2) for r in REVENUE]
+# 賞与引当（売上の1%相当）
+BONUS     = [round(r * 0.01, 2) for r in REVENUE]
 
-# 営業利益率（店舗レベル。本部・商標料控除前）
+# 営業利益率（店舗レベル。本部経費・賞与控除前）
 _BASE_MARGIN = [0.12, 0.13, 0.14, 0.16, 0.17, 0.18, 0.19, 0.19, 0.20, 0.20]
 
-# 営業利益 = 売上×店舗レベル利益率 - 本部経費 - 商標料
+# 営業利益 = 売上×店舗レベル利益率 - 本部経費 - 賞与引当
 PROFIT = [
-    round(max(r * m - hq - ry, 0), 1)
-    for r, m, hq, ry in zip(REVENUE, _BASE_MARGIN, HQ_COST, ROYALTY)
+    round(max(r * m - hq - bo, 0), 1)
+    for r, m, hq, bo in zip(REVENUE, _BASE_MARGIN, HQ_COST, BONUS)
 ]
 # 実効営業利益率
 MARGIN_RATE = [round(p / r, 3) if r > 0 else 0 for p, r in zip(PROFIT, REVENUE)]
@@ -206,7 +206,7 @@ def make_profit_chart():
 
     # 本部経費エリア
     gross = [round(r * m, 1) for r, m in zip(REVENUE, _BASE_MARGIN)]
-    ax.fill_between(x, gross, PROFIT, alpha=0.25, color=RED_HEX, label="本部経費・商標料")
+    ax.fill_between(x, gross, PROFIT, alpha=0.25, color=RED_HEX, label="本部経費・賞与引当")
     ax.fill_between(x, PROFIT, alpha=0.25, color=GRN_HEX)
     ax.plot(x, gross,  color=RED_HEX, linewidth=1.5, linestyle="--", marker="", zorder=3)
     ax.plot(x, PROFIT, color=GRN_HEX, linewidth=3.0, marker="o", markersize=8, zorder=4,
@@ -234,7 +234,7 @@ def make_profit_chart():
     ax.grid(axis="y", color="#3A2A18", linewidth=0.6, zorder=0)
     ax.legend(loc="upper left", facecolor="#2A1E12", edgecolor="#3A2A18",
               labelcolor=LGT_HEX, fontsize=10)
-    ax.set_title("営業利益推移（本部経費・商標料控除後）", color=WHT_HEX, fontsize=13, pad=10)
+    ax.set_title("営業利益推移（本部経費・賞与引当控除後）", color=WHT_HEX, fontsize=13, pad=10)
     fig.tight_layout(pad=1.2)
     return chart_to_image(fig)
 
@@ -1427,10 +1427,10 @@ def s_group_strategy(prs, slide_num):
         },
         {
             "no": "03",
-            "name": "SNS・デザイン\nコンサル",
-            "tag": "ストック収益　Year2〜",
+            "name": "SNS事業部",
+            "tag": "事業部化　Year3〜",
             "icon": "📱",
-            "desc": "然ブランドで培ったSNS戦略・\nインフルエンサー設計・店舗VI制作を\n他飲食企業に提供するコンサル事業。",
+            "desc": "3年目に事業部として独立。\nSNSコンサルティングと\nクリエイティブ制作を軸に\n飲食業界特化で展開。",
             "y7": "年商 2.5億円",
             "kpi": "月額顧問契約 / 案件単価UP",
         },
@@ -1483,10 +1483,10 @@ def s_group_strategy(prs, slide_num):
 
 
 def s_hq_cost(prs, slide_num):
-    """本部経費・商標料スライド"""
+    """本部経費・賞与引当スライド"""
     sl = blank_slide(prs)
     bg(sl)
-    slide_header(sl, "HQ COST", "本部経費・商標料　――　スケールと共に整備する", slide_num)
+    slide_header(sl, "HQ COST", "本部経費・賞与引当　――　スケールと共に整備する", slide_num)
 
     # 左：本部経費計画
     add_textbox(sl, "本部経費ロードマップ（Year3〜）",
@@ -1513,7 +1513,7 @@ def s_hq_cost(prs, slide_num):
                     size=12, color=C_GRAY)
 
     # 右：商標料・システム料
-    add_textbox(sl, "商標料・システム料（売上の1%）",
+    add_textbox(sl, "賞与引当（売上の1%相当）",
                 Inches(7.3), Inches(1.85), Inches(5.7), Inches(0.45),
                 size=16, bold=True, color=C_ACCENT)
 
@@ -1527,15 +1527,15 @@ def s_hq_cost(prs, slide_num):
                 size=15, color=C_LIGHT)
 
     add_rect(sl, Inches(7.1), Inches(4.8), Inches(5.9), Inches(0.55), C_ACCENT)
-    add_textbox(sl, "7年目 商標料・システム料収入",
+    add_textbox(sl, "7年目 賞与引当総額",
                 Inches(7.2), Inches(4.83), Inches(3.5), Inches(0.44),
                 size=14, bold=True, color=C_BG)
-    add_textbox(sl, f"約{ROYALTY[6]:.1f}億円/年",
+    add_textbox(sl, f"約{BONUS[6]:.1f}億円/年",
                 Inches(10.6), Inches(4.83), Inches(2.2), Inches(0.44),
                 size=18, bold=True, color=C_BG, align=PP_ALIGN.RIGHT)
 
     add_textbox(sl,
-                "本部収益＝FC加盟金＋ロイヤリティ（3%）＋商標料（1%）\n"
+                "賞与引当は売上1%で毎月積立。社員・バイトへの賞与原資として管理。\n"
                 "→ 100店舗時、本部だけで年商ベース約35億円規模のグループ収入",
                 Inches(7.1), Inches(5.55), Inches(5.9), Inches(1.0),
                 size=13, color=C_LIGHT, italic=True)
@@ -1544,7 +1544,7 @@ def s_hq_cost(prs, slide_num):
     add_rect(sl, Inches(0.55), Inches(6.75), Inches(12.3), Inches(0.55),
              RGBColor(0x2A, 0x1E, 0x12))
     add_textbox(sl,
-                "本部経費・商標料控除後の実効営業利益率：Year3〜9% / Year7〜12% / Year10〜13%（15%から約2〜3%下方修正）",
+                "本部経費・賞与引当控除後の実効営業利益率：Year3〜9% / Year7〜12% / Year10〜13%（15%から約2〜3%下方修正）",
                 Inches(0.7), Inches(6.8), Inches(12.0), Inches(0.44),
                 size=13, bold=True, color=C_ACCENT)
 
