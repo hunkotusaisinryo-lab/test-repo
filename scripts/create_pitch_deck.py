@@ -9,7 +9,20 @@ from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
 from pptx.util import Inches, Pt
 import os
+import io
 from datetime import datetime
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
+import matplotlib.patches as mpatches
+import numpy as np
+
+# 日本語フォント設定
+_JP_FONT = "/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf"
+fm.fontManager.addfont(_JP_FONT)
+_jp_prop = fm.FontProperties(fname=_JP_FONT)
+matplotlib.rcParams["font.family"] = _jp_prop.get_name()
 
 # === カラーパレット ===
 C_BG       = RGBColor(0x1A, 0x12, 0x0B)   # 深い焦げ茶（和の闇）
@@ -78,7 +91,197 @@ def add_line(slide, left, top, width, color=C_ACCENT, height=Pt(1.5)):
     return rect
 
 
-def slide_number(slide, num, total=20):
+# ─── グラフ生成ヘルパー ───────────────────────────────────────────
+
+BG_HEX  = "#1A120B"
+ACC_HEX = "#C8963C"
+WHT_HEX = "#FFFFFF"
+GRY_HEX = "#8A7A6A"
+LGT_HEX = "#F0E6D3"
+GRN_HEX = "#277A5A"
+RED_HEX = "#C0392B"
+
+# 10年間データ
+YEARS       = list(range(1, 11))
+STORES      = [1, 2, 5, 15, 30, 65, 100, 120, 140, 160]
+# グループ年商（億円）：店舗数×月商720万×12ヶ月。1年目は開業6ヶ月想定
+REVENUE     = [round(s * 720 * 12 / 10000 * (0.5 if i == 0 else 1.0), 1)
+               for i, s in enumerate(STORES)]
+# 営業利益（億円）：直営は20%、FC比率上昇で30%超へ
+MARGIN_RATE = [0.10, 0.12, 0.15, 0.20, 0.23, 0.27, 0.30, 0.32, 0.33, 0.33]
+PROFIT      = [round(r * m, 1) for r, m in zip(REVENUE, MARGIN_RATE)]
+# 企業価値（億円）：営業利益×25倍PER（成長企業想定）
+VALUATION   = [round(p * 25, 0) for p in PROFIT]
+
+
+def chart_to_image(fig):
+    """matplotlib figure → PNG bytes"""
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight", dpi=150)
+    plt.close(fig)
+    buf.seek(0)
+    return buf
+
+
+def make_revenue_chart():
+    """年商推移（棒グラフ）"""
+    fig, ax = plt.subplots(figsize=(7.5, 4.2))
+    fig.patch.set_facecolor(BG_HEX)
+    ax.set_facecolor("#2A1E12")
+
+    x = np.arange(len(YEARS))
+    bars = ax.bar(x, REVENUE, color=ACC_HEX, width=0.65, zorder=3)
+
+    # 100店舗達成ライン（7年目）
+    ax.axvline(x=6, color=RED_HEX, linewidth=1.2, linestyle="--", alpha=0.8)
+    ax.text(6.08, max(REVENUE) * 0.92, "100店舗達成\n(7年目)",
+            color=RED_HEX, fontsize=8.5, va="top")
+
+    # 値ラベル
+    for bar, val in zip(bars, REVENUE):
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.5,
+                f"{val:.0f}億", ha="center", va="bottom",
+                color=WHT_HEX, fontsize=8.5, fontweight="bold")
+
+    ax.set_xticks(x)
+    ax.set_xticklabels([f"{y}年目" for y in YEARS], color=LGT_HEX, fontsize=9)
+    ax.set_ylabel("グループ年商（億円）", color=GRY_HEX, fontsize=9)
+    ax.tick_params(colors=GRY_HEX)
+    ax.spines[:].set_color("#3A2A18")
+    ax.yaxis.set_tick_params(labelcolor=GRY_HEX)
+    ax.grid(axis="y", color="#3A2A18", linewidth=0.7, zorder=0)
+    ax.set_title("グループ年商推移（10年）", color=WHT_HEX, fontsize=11, pad=8)
+    fig.tight_layout(pad=1.0)
+    return chart_to_image(fig)
+
+
+def make_profit_chart():
+    """営業利益推移（折れ線）"""
+    fig, ax = plt.subplots(figsize=(7.5, 4.2))
+    fig.patch.set_facecolor(BG_HEX)
+    ax.set_facecolor("#2A1E12")
+
+    x = np.arange(len(YEARS))
+    ax.fill_between(x, PROFIT, alpha=0.25, color=GRN_HEX)
+    ax.plot(x, PROFIT, color=GRN_HEX, linewidth=2.5, marker="o",
+            markersize=6, zorder=4)
+
+    for xi, val in zip(x, PROFIT):
+        ax.text(xi, val + 0.3, f"{val:.1f}億",
+                ha="center", va="bottom", color=GRN_HEX,
+                fontsize=8.5, fontweight="bold")
+
+    ax.set_xticks(x)
+    ax.set_xticklabels([f"{y}年目" for y in YEARS], color=LGT_HEX, fontsize=9)
+    ax.set_ylabel("営業利益（億円）", color=GRY_HEX, fontsize=9)
+    ax.tick_params(colors=GRY_HEX)
+    ax.spines[:].set_color("#3A2A18")
+    ax.yaxis.set_tick_params(labelcolor=GRY_HEX)
+    ax.grid(axis="y", color="#3A2A18", linewidth=0.7, zorder=0)
+    ax.set_title("営業利益推移（10年）", color=WHT_HEX, fontsize=11, pad=8)
+    fig.tight_layout(pad=1.0)
+    return chart_to_image(fig)
+
+
+def make_valuation_chart():
+    """企業価値推移（棒＋折れ線コンボ）"""
+    fig, ax1 = plt.subplots(figsize=(7.5, 4.2))
+    fig.patch.set_facecolor(BG_HEX)
+    ax1.set_facecolor("#2A1E12")
+
+    x = np.arange(len(YEARS))
+    # 企業価値バー
+    bars = ax1.bar(x, VALUATION, color="#7A5C2C", width=0.65, zorder=3, label="企業価値")
+    ax1.set_ylabel("企業価値（億円）", color=ACC_HEX, fontsize=9)
+    ax1.tick_params(axis="y", colors=ACC_HEX)
+
+    # 値ラベル（7年目・10年目のみ）
+    for i in [6, 9]:
+        bar = bars[i]
+        ax1.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 5,
+                 f"{VALUATION[i]:.0f}億",
+                 ha="center", va="bottom", color=ACC_HEX,
+                 fontsize=9, fontweight="bold")
+
+    # 店舗数折れ線（右軸）
+    ax2 = ax1.twinx()
+    ax2.set_facecolor("#2A1E12")
+    ax2.plot(x, STORES, color=WHT_HEX, linewidth=2.0, marker="s",
+             markersize=5, zorder=5, label="店舗数")
+    ax2.set_ylabel("店舗数", color=WHT_HEX, fontsize=9)
+    ax2.tick_params(axis="y", colors=GRY_HEX)
+
+    ax1.set_xticks(x)
+    ax1.set_xticklabels([f"{y}年目" for y in YEARS], color=LGT_HEX, fontsize=9)
+    ax1.spines[:].set_color("#3A2A18")
+    ax2.spines[:].set_color("#3A2A18")
+    ax1.yaxis.set_tick_params(labelcolor=ACC_HEX)
+    ax1.grid(axis="y", color="#3A2A18", linewidth=0.7, zorder=0)
+
+    legend_items = [
+        mpatches.Patch(color="#7A5C2C", label="企業価値（PER25×）"),
+        plt.Line2D([0], [0], color=WHT_HEX, marker="s", markersize=5, label="店舗数"),
+    ]
+    ax1.legend(handles=legend_items, loc="upper left",
+               facecolor="#2A1E12", edgecolor="#3A2A18",
+               labelcolor=LGT_HEX, fontsize=8)
+    ax1.set_title("企業価値推移（10年）", color=WHT_HEX, fontsize=11, pad=8)
+    fig.tight_layout(pad=1.0)
+    return chart_to_image(fig)
+
+
+def s_growth_chart(prs, slide_num):
+    """成長・財務チャートスライド（グラフ3本）"""
+    sl = blank_slide(prs)
+    bg(sl)
+    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
+
+    add_textbox(sl, "10-YEAR GROWTH", Inches(0.6), Inches(0.4), Inches(6), Inches(0.5),
+                size=11, bold=True, color=C_ACCENT)
+    add_textbox(sl, "10年財務成長シナリオ", Inches(0.6), Inches(0.75),
+                Inches(11), Inches(0.7), size=28, bold=True, color=C_WHITE)
+    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
+
+    # サマリーKPI（4ボックス）
+    kpis = [
+        ("7年目 店舗数",  "100店舗"),
+        ("7年目 年商",    "86億円"),
+        ("7年目 営業利益","26億円"),
+        ("7年目 企業価値","約648億円"),
+    ]
+    for i, (label, val) in enumerate(kpis):
+        x = Inches(0.5 + i * 3.2)
+        add_rect(sl, x, Inches(1.75), Inches(3.0), Inches(0.85),
+                 RGBColor(0x3A, 0x2A, 0x08))
+        add_textbox(sl, label, x + Inches(0.1), Inches(1.8),
+                    Inches(2.8), Inches(0.3), size=10, color=C_GRAY,
+                    align=PP_ALIGN.CENTER)
+        add_textbox(sl, val, x + Inches(0.1), Inches(2.1),
+                    Inches(2.8), Inches(0.44), size=18, bold=True,
+                    color=C_ACCENT, align=PP_ALIGN.CENTER)
+
+    # グラフ3枚を横並び
+    charts = [
+        (make_revenue_chart,   Inches(0.4),  Inches(2.75), Inches(4.1), Inches(2.5)),
+        (make_profit_chart,    Inches(4.6),  Inches(2.75), Inches(4.1), Inches(2.5)),
+        (make_valuation_chart, Inches(8.8),  Inches(2.75), Inches(4.3), Inches(2.5)),
+    ]
+    for fn, left, top, w, h in charts:
+        img_buf = fn()
+        sl.shapes.add_picture(img_buf, left, top, w, h)
+
+    # 前提注記
+    add_textbox(sl,
+                "※ 企業価値はPER25倍で試算（外食FC上場企業の参考値）。"
+                "月商720万円/店・稼働率100%を前提とした最大値シナリオ。",
+                Inches(0.5), Inches(7.1), Inches(12.3), Inches(0.3),
+                size=10, color=C_GRAY, align=PP_ALIGN.CENTER, italic=True)
+
+    slide_number(sl, slide_num)
+    return sl
+
+
+def slide_number(slide, num, total=21):
     add_textbox(slide, f"{num} / {total}",
                 Inches(12.5), Inches(7.1), Inches(0.8), Inches(0.3),
                 size=9, color=C_GRAY, align=PP_ALIGN.RIGHT)
@@ -1418,6 +1621,7 @@ def main():
     s16_brand_sns(prs)
     s17_operations(prs)
     s18_data_kpi(prs)
+    s_growth_chart(prs, slide_num=19)
     s19_risk(prs)
     s20_action_plan(prs)
     s12_closing(prs)
