@@ -59,8 +59,11 @@ REVENUE   = [round(z+n+c, 1) for z, n, c in zip(ZEN_REV, NEW_REV, CON_REV)]
 # 店舗数（然ブランド）
 STORES    = [1, 2, 5, 15, 30, 65, 100, 120, 140, 160]
 
-# 本部経費（億円）Year3〜
-HQ_COST   = [0.0, 0.0, 0.3, 0.8, 1.5, 2.5, 4.0, 5.0, 6.0, 7.0]
+# 採用費（億円）：店舗拡大・本部・SNS事業部の採用コスト
+RECRUIT   = [0.03, 0.05, 0.15, 0.30, 0.50, 0.80, 1.20, 1.50, 1.80, 2.00]
+# 本部経費（億円）Year3〜（採用費含む）
+HQ_COST   = [round(r + rec, 2) for r, rec in zip(
+             [0.0, 0.0, 0.3, 0.8, 1.5, 2.5, 4.0, 5.0, 6.0, 7.0], RECRUIT)]
 
 # 賞与引当（売上の1%相当）
 BONUS     = [round(r * 0.01, 2) for r in REVENUE]
@@ -156,6 +159,56 @@ def chart_to_image(fig):
     plt.close(fig)
     buf.seek(0)
     return buf
+
+
+def make_positioning_map():
+    """ポジショニングマップ（散布図スタイル）"""
+    fig, ax = plt.subplots(figsize=(6.8, 5.0))
+    fig.patch.set_facecolor("#2A1E12")
+    ax.set_facecolor("#2A1E12")
+
+    # 競合店プロット（x=価格帯/こだわり度, y=健康・発酵度）
+    competitors = [
+        ("びゃく",      0.35, 0.85, GRY_HEX),
+        ("なかよし",    0.55, 0.45, GRY_HEX),
+        ("つむぎ堂",    0.70, 0.20, GRY_HEX),
+        ("ひまり堂",    0.65, 0.15, GRY_HEX),
+        ("ひまり商店",  0.75, 0.10, GRY_HEX),
+    ]
+    for name, x, y, c in competitors:
+        ax.scatter(x, y, s=220, color=c, zorder=4, edgecolors="#1A120B", linewidths=1.5)
+        ax.annotate(name, (x, y), textcoords="offset points", xytext=(8, 4),
+                    color=LGT_HEX, fontsize=10.5)
+
+    # 然（空白地帯を強調）
+    ax.scatter(0.78, 0.80, s=600, color=ACC_HEX, zorder=6,
+               edgecolors=WHT_HEX, linewidths=2.5, marker="*")
+    ax.annotate("★ 肉酒場 然\n（空白地帯）", (0.78, 0.80),
+                textcoords="offset points", xytext=(-72, 10),
+                color=ACC_HEX, fontsize=12, fontweight="bold")
+
+    # 空白地帯を丸で囲む
+    from matplotlib.patches import Ellipse
+    ellipse = Ellipse((0.75, 0.78), 0.38, 0.38, angle=0,
+                      linewidth=1.8, edgecolor=ACC_HEX,
+                      facecolor=ACC_HEX, alpha=0.08, zorder=2)
+    ax.add_patch(ellipse)
+
+    # 軸設定
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.axhline(0.5, color="#4A3A28", linewidth=1.0, zorder=1)
+    ax.axvline(0.5, color="#4A3A28", linewidth=1.0, zorder=1)
+
+    # 軸ラベル
+    ax.set_xlabel("大衆・低価格　　　　　　　　　上質・こだわり", color=GRY_HEX, fontsize=10.5)
+    ax.set_ylabel("健康・発酵（低）                   健康・発酵（高）",
+                  color=GRY_HEX, fontsize=10.5)
+    ax.tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
+    ax.spines[:].set_color("#3A2A18")
+
+    fig.tight_layout(pad=0.8)
+    return chart_to_image(fig)
 
 
 def make_revenue_chart():
@@ -353,31 +406,15 @@ def s04_concept(prs):
         add_textbox(sl, body, Inches(0.88), y + Inches(0.4), Inches(5.2), Inches(0.45),
                     size=14, color=C_GRAY)
 
-    # 右：ポジショニング図
-    add_rect(sl, Inches(7.0), Inches(1.85), Inches(6.0), Inches(5.2),
-             RGBColor(0x2A, 0x1E, 0x12))
+    # 右：ポジショニングマップ（matplotlib画像）
     add_textbox(sl, "ポジショニングマップ",
-                Inches(7.15), Inches(2.0), Inches(5.7), Inches(0.45),
+                Inches(7.0), Inches(1.82), Inches(6.0), Inches(0.45),
                 size=14, bold=True, color=C_ACCENT)
-
-    map_text = (
-        "       健康・発酵（高）\n"
-        "            ↑\n"
-        "   びゃく   │\n"
-        "            │   ★肉酒場 然\n"
-        "            │  （空白地帯）\n"
-        "大衆──────┼──────── こだわり\n"
-        " ひまり堂   │ なかよし\n"
-        " つむぎ堂   │\n"
-        "            ↓\n"
-        "       健康・発酵（低）"
-    )
-    add_textbox(sl, map_text, Inches(7.15), Inches(2.55), Inches(5.7), Inches(3.8),
-                size=13, color=C_LIGHT)
-
-    add_textbox(sl, "「健康・発酵 × 肉 × ランチ＆ディナー」\nは競合ゼロの完全空白地帯",
-                Inches(7.15), Inches(6.35), Inches(5.7), Inches(0.75),
-                size=14, bold=True, color=C_ACCENT)
+    pos_img = make_positioning_map()
+    sl.shapes.add_picture(pos_img, Inches(7.0), Inches(2.3), Inches(6.1), Inches(4.8))
+    add_textbox(sl, "「健康・発酵 × 肉 × ランチ＆ディナー」は競合ゼロの完全空白地帯",
+                Inches(7.0), Inches(7.12), Inches(6.1), Inches(0.35),
+                size=13, bold=True, color=C_ACCENT)
 
     return sl
 
@@ -1419,9 +1456,9 @@ def s_group_strategy(prs, slide_num):
         {
             "no": "02",
             "name": "新業態ブランド",
-            "tag": "1人OP特化　Year4〜",
+            "tag": "1人OP特化　Year4〜（構想中）",
             "icon": "🍜",
-            "desc": "1人〜2人で運営できる小型FC業態。\n低投資・高回転モデルで地方・郊外に展開。\n発酵×定食の然ノウハウを凝縮。",
+            "desc": "1人〜2人で完結する小型FC業態。\nジャンル・コンセプトは現在設計中。\n然ブランドの運営ノウハウを凝縮し\n低投資・高回転モデルで展開予定。",
             "y7": "年商 12億円",
             "kpi": "50店舗 / FC特化 / 低コスト出店",
         },
