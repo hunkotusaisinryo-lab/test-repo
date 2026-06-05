@@ -1,0 +1,37 @@
+name: 週次トレンドリサーチレポート
+
+on:
+  schedule:
+    - cron: '0 22 * * 0'  # 毎週日曜22:00 UTC = 月曜07:00 JST
+  workflow_dispatch:
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Python環境をセットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 依存パッケージをインストール
+        run: pip install python-pptx
+
+      - name: 週次レポートを生成
+        run: python scripts/weekly_report.py
+
+      - name: 結果をコミット・プッシュ
+        run: |
+          git config user.name "Claude Research Bot"
+          git config user.email "noreply@anthropic.com"
+          git add reports/
+          git diff --staged --quiet || git commit -m "週次トレンドレポート $(date '+%Y-%m-%d')"
+          git push origin main
