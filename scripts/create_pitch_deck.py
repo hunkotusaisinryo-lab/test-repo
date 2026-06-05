@@ -42,12 +42,39 @@ LGT_HEX = "#F0E6D3"
 GRN_HEX = "#277A5A"
 RED_HEX = "#C0392B"
 
-# 10年間データ
-YEARS       = list(range(1, 11))
-STORES      = [1, 2, 5, 15, 30, 65, 100, 120, 140, 160]
-REVENUE     = [0.4, 1.7, 4.3, 13.0, 25.9, 56.2, 86.4, 103.7, 120.9, 138.2]
-MARGIN_RATE = [0.05, 0.07, 0.09, 0.11, 0.12, 0.13, 0.15, 0.15, 0.15, 0.16]
-PROFIT      = [round(r * m, 1) for r, m in zip(REVENUE, MARGIN_RATE)]
+# ─── 10年間グループ財務データ ─────────────────────────────────────
+
+YEARS  = list(range(1, 11))
+
+# 【肉酒場 然】年商（億円）
+ZEN_REV   = [0.4, 1.7, 4.3, 13.0, 25.9, 56.2, 86.4, 103.7, 120.9, 138.2]
+# 【新業態（1人OPブランド）】Year4〜展開
+NEW_REV   = [0.0, 0.0, 0.0,  0.5,  2.5,  6.0, 12.0,  22.0,  38.0,  55.0]
+# 【SNS・デザインコンサル】Year2〜展開
+CON_REV   = [0.0, 0.3, 0.6,  1.0,  1.5,  2.0,  2.5,   3.0,   3.5,   4.0]
+
+# グループ合計年商
+REVENUE   = [round(z+n+c, 1) for z, n, c in zip(ZEN_REV, NEW_REV, CON_REV)]
+
+# 店舗数（然ブランド）
+STORES    = [1, 2, 5, 15, 30, 65, 100, 120, 140, 160]
+
+# 本部経費（億円）Year3〜
+HQ_COST   = [0.0, 0.0, 0.3, 0.8, 1.5, 2.5, 4.0, 5.0, 6.0, 7.0]
+
+# 商標料・システム料（売上の1%）
+ROYALTY   = [round(r * 0.01, 2) for r in REVENUE]
+
+# 営業利益率（店舗レベル。本部・商標料控除前）
+_BASE_MARGIN = [0.12, 0.13, 0.14, 0.16, 0.17, 0.18, 0.19, 0.19, 0.20, 0.20]
+
+# 営業利益 = 売上×店舗レベル利益率 - 本部経費 - 商標料
+PROFIT = [
+    round(max(r * m - hq - ry, 0), 1)
+    for r, m, hq, ry in zip(REVENUE, _BASE_MARGIN, HQ_COST, ROYALTY)
+]
+# 実効営業利益率
+MARGIN_RATE = [round(p / r, 3) if r > 0 else 0 for p, r in zip(PROFIT, REVENUE)]
 
 
 def new_prs():
@@ -104,7 +131,7 @@ def add_line(slide, left, top, width, color=C_ACCENT, height=Pt(1.5)):
     return rect
 
 
-def slide_number(slide, num, total=21):
+def slide_number(slide, num, total=23):
     add_textbox(slide, f"{num} / {total}",
                 Inches(12.5), Inches(7.1), Inches(0.8), Inches(0.3),
                 size=10, color=C_GRAY, align=PP_ALIGN.RIGHT)
@@ -132,22 +159,28 @@ def chart_to_image(fig):
 
 
 def make_revenue_chart():
-    """年商推移（棒グラフ）— 大サイズ"""
+    """年商推移（3事業積み上げ棒グラフ）"""
     fig, ax = plt.subplots(figsize=(8.5, 5.2))
     fig.patch.set_facecolor(BG_HEX)
     ax.set_facecolor("#2A1E12")
 
     x = np.arange(len(YEARS))
-    bars = ax.bar(x, REVENUE, color=ACC_HEX, width=0.65, zorder=3)
+    w = 0.65
+    b1 = ax.bar(x, ZEN_REV, width=w, color=ACC_HEX,      label="肉酒場 然",       zorder=3)
+    b2 = ax.bar(x, NEW_REV, width=w, color="#7A5C2C",     label="新業態ブランド",   zorder=3,
+                bottom=ZEN_REV)
+    b3 = ax.bar(x, CON_REV, width=w, color=GRN_HEX,      label="コンサル事業",     zorder=3,
+                bottom=[z+n for z,n in zip(ZEN_REV, NEW_REV)])
 
     ax.axvline(x=6, color=RED_HEX, linewidth=1.5, linestyle="--", alpha=0.85)
-    ax.text(6.1, max(REVENUE) * 0.9, "100店舗達成\n(7年目)",
-            color=RED_HEX, fontsize=10, va="top")
+    ax.text(6.12, max(REVENUE) * 0.88, "100店舗\n(7年目)",
+            color=RED_HEX, fontsize=9.5, va="top")
 
-    for bar, val in zip(bars, REVENUE):
-        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 1.5,
-                f"{val:.0f}億", ha="center", va="bottom",
-                color=WHT_HEX, fontsize=10, fontweight="bold")
+    for xi, val in zip(x, REVENUE):
+        if val >= 5:
+            ax.text(xi, val + 1.5, f"{val:.0f}億",
+                    ha="center", va="bottom", color=WHT_HEX,
+                    fontsize=9.5, fontweight="bold")
 
     ax.set_xticks(x)
     ax.set_xticklabels([f"{y}年目" for y in YEARS], color=LGT_HEX, fontsize=11)
@@ -155,36 +188,53 @@ def make_revenue_chart():
     ax.tick_params(colors=GRY_HEX, labelsize=10)
     ax.spines[:].set_color("#3A2A18")
     ax.yaxis.set_tick_params(labelcolor=GRY_HEX)
-    ax.grid(axis="y", color="#3A2A18", linewidth=0.7, zorder=0)
-    ax.set_title("グループ年商推移（10年）", color=WHT_HEX, fontsize=13, pad=10)
+    ax.grid(axis="y", color="#3A2A18", linewidth=0.6, zorder=0)
+    ax.legend(loc="upper left", facecolor="#2A1E12", edgecolor="#3A2A18",
+              labelcolor=LGT_HEX, fontsize=10)
+    ax.set_title("グループ年商推移（10年・3事業合算）", color=WHT_HEX, fontsize=13, pad=10)
     fig.tight_layout(pad=1.2)
     return chart_to_image(fig)
 
 
 def make_profit_chart():
-    """営業利益推移（折れ線）— 大サイズ"""
+    """営業利益推移（折れ線＋本部経費帯）"""
     fig, ax = plt.subplots(figsize=(8.5, 5.2))
     fig.patch.set_facecolor(BG_HEX)
     ax.set_facecolor("#2A1E12")
 
     x = np.arange(len(YEARS))
-    ax.fill_between(x, PROFIT, alpha=0.28, color=GRN_HEX)
-    ax.plot(x, PROFIT, color=GRN_HEX, linewidth=3.0, marker="o",
-            markersize=8, zorder=4)
+
+    # 本部経費エリア
+    gross = [round(r * m, 1) for r, m in zip(REVENUE, _BASE_MARGIN)]
+    ax.fill_between(x, gross, PROFIT, alpha=0.25, color=RED_HEX, label="本部経費・商標料")
+    ax.fill_between(x, PROFIT, alpha=0.25, color=GRN_HEX)
+    ax.plot(x, gross,  color=RED_HEX, linewidth=1.5, linestyle="--", marker="", zorder=3)
+    ax.plot(x, PROFIT, color=GRN_HEX, linewidth=3.0, marker="o", markersize=8, zorder=4,
+            label="営業利益（本部経費後）")
 
     for xi, val in zip(x, PROFIT):
-        ax.text(xi, val + 0.5, f"{val:.1f}億",
-                ha="center", va="bottom", color=GRN_HEX,
-                fontsize=10, fontweight="bold")
+        if val > 0:
+            ax.text(xi, val + 0.3, f"{val:.1f}億",
+                    ha="center", va="bottom", color=GRN_HEX,
+                    fontsize=9.5, fontweight="bold")
+
+    # 利益率ラベル（7・10年目）
+    for yi in [6, 9]:
+        rate = MARGIN_RATE[yi]
+        ax.annotate(f"利益率\n{rate*100:.0f}%",
+                    xy=(yi, PROFIT[yi]), xytext=(yi - 0.7, PROFIT[yi] + 1.5),
+                    color=ACC_HEX, fontsize=9, arrowprops=dict(color=ACC_HEX, width=0.5, headwidth=4))
 
     ax.set_xticks(x)
     ax.set_xticklabels([f"{y}年目" for y in YEARS], color=LGT_HEX, fontsize=11)
-    ax.set_ylabel("営業利益（億円）", color=GRY_HEX, fontsize=11)
+    ax.set_ylabel("億円", color=GRY_HEX, fontsize=11)
     ax.tick_params(colors=GRY_HEX, labelsize=10)
     ax.spines[:].set_color("#3A2A18")
     ax.yaxis.set_tick_params(labelcolor=GRY_HEX)
-    ax.grid(axis="y", color="#3A2A18", linewidth=0.7, zorder=0)
-    ax.set_title("営業利益推移（10年）", color=WHT_HEX, fontsize=13, pad=10)
+    ax.grid(axis="y", color="#3A2A18", linewidth=0.6, zorder=0)
+    ax.legend(loc="upper left", facecolor="#2A1E12", edgecolor="#3A2A18",
+              labelcolor=LGT_HEX, fontsize=10)
+    ax.set_title("営業利益推移（本部経費・商標料控除後）", color=WHT_HEX, fontsize=13, pad=10)
     fig.tight_layout(pad=1.2)
     return chart_to_image(fig)
 
@@ -1142,11 +1192,16 @@ def s_growth_chart(prs, slide_num):
     slide_header(sl, "10-YEAR GROWTH", "10年財務成長シナリオ", slide_num)
 
     # サマリーKPI（4ボックス）
+    # 7年目の実値を計算して表示
+    y7_rev    = REVENUE[6]
+    y7_profit = PROFIT[6]
+    y7_rate   = MARGIN_RATE[6]
+    y10_rev   = REVENUE[9]
     kpis = [
-        ("7年目 店舗数",   "100店舗"),
-        ("7年目 年商",     "86億円"),
-        ("7年目 営業利益", "約13億円"),
-        ("10年目 年商",    "138億円"),
+        ("7年目 グループ年商",   f"{y7_rev:.0f}億円"),
+        ("7年目 営業利益",       f"{y7_profit:.1f}億円"),
+        ("7年目 実効利益率",     f"{y7_rate*100:.0f}%"),
+        ("10年目 グループ年商",  f"{y10_rev:.0f}億円"),
     ]
     for i, (label, val) in enumerate(kpis):
         x = Inches(0.55 + i * 3.2)
@@ -1344,8 +1399,162 @@ def s12_closing(prs):
     return sl
 
 
+def s_group_strategy(prs, slide_num):
+    """グループ事業戦略（3事業構成）"""
+    sl = blank_slide(prs)
+    bg(sl)
+    slide_header(sl, "GROUP STRATEGY", "グループ事業戦略　――　3つの柱で成長する", slide_num)
+
+    # 3事業カード
+    businesses = [
+        {
+            "no": "01",
+            "name": "肉酒場 然",
+            "tag": "メイン事業　Year1〜",
+            "icon": "🥩",
+            "desc": "糀漬け肉×定食居酒屋の直営・FC展開。\n7年目100店舗・年商86億を目指すコア事業。",
+            "y7": "年商 86億円",
+            "kpi": "100店舗 / FC展開 / 上場検討",
+        },
+        {
+            "no": "02",
+            "name": "新業態ブランド",
+            "tag": "1人OP特化　Year4〜",
+            "icon": "🍜",
+            "desc": "1人〜2人で運営できる小型FC業態。\n低投資・高回転モデルで地方・郊外に展開。\n発酵×定食の然ノウハウを凝縮。",
+            "y7": "年商 12億円",
+            "kpi": "50店舗 / FC特化 / 低コスト出店",
+        },
+        {
+            "no": "03",
+            "name": "SNS・デザイン\nコンサル",
+            "tag": "ストック収益　Year2〜",
+            "icon": "📱",
+            "desc": "然ブランドで培ったSNS戦略・\nインフルエンサー設計・店舗VI制作を\n他飲食企業に提供するコンサル事業。",
+            "y7": "年商 2.5億円",
+            "kpi": "月額顧問契約 / 案件単価UP",
+        },
+    ]
+
+    for i, b in enumerate(businesses):
+        x = Inches(0.55 + i * 4.25)
+        # カード背景
+        add_rect(sl, x, Inches(1.82), Inches(4.05), Inches(5.35),
+                 RGBColor(0x2A, 0x1E, 0x12))
+        # 番号・タグ
+        add_textbox(sl, b["no"], x + Inches(0.15), Inches(1.95),
+                    Inches(0.5), Inches(0.4), size=13, bold=True, color=C_ACCENT)
+        add_rect(sl, x + Inches(0.6), Inches(1.98), Inches(3.2), Inches(0.32), C_ACCENT)
+        add_textbox(sl, b["tag"], x + Inches(0.6), Inches(1.98),
+                    Inches(3.2), Inches(0.32), size=11, bold=True,
+                    color=C_BG, align=PP_ALIGN.CENTER)
+        # 事業名
+        add_textbox(sl, b["name"], x + Inches(0.15), Inches(2.38),
+                    Inches(3.8), Inches(0.85), size=24, bold=True, color=C_WHITE)
+        # 説明
+        add_line(sl, x + Inches(0.15), Inches(3.28), Inches(3.7), color=C_GRAY,
+                 height=Pt(0.5))
+        add_textbox(sl, b["desc"], x + Inches(0.15), Inches(3.4),
+                    Inches(3.75), Inches(1.3), size=14, color=C_LIGHT)
+        # 7年目目標
+        add_rect(sl, x, Inches(4.85), Inches(4.05), Inches(0.52),
+                 RGBColor(0x3A, 0x2A, 0x08))
+        add_textbox(sl, f"7年目目標：{b['y7']}", x + Inches(0.15), Inches(4.88),
+                    Inches(3.8), Inches(0.42), size=15, bold=True, color=C_ACCENT)
+        add_textbox(sl, b["kpi"], x + Inches(0.15), Inches(5.45),
+                    Inches(3.8), Inches(0.6), size=12, color=C_GRAY)
+
+    # 合計
+    add_rect(sl, Inches(0.55), Inches(6.2), Inches(12.3), Inches(0.9),
+             RGBColor(0x3A, 0x2A, 0x08))
+    add_textbox(sl, "7年目グループ合計年商",
+                Inches(0.8), Inches(6.28), Inches(4.0), Inches(0.38),
+                size=16, color=C_GRAY)
+    y7_total = REVENUE[6]
+    add_textbox(sl, f"約{y7_total:.0f}億円",
+                Inches(4.5), Inches(6.25), Inches(4.0), Inches(0.5),
+                size=28, bold=True, color=C_ACCENT)
+    add_textbox(sl, "（然86億 ＋ 新業態12億 ＋ コンサル2.5億）",
+                Inches(8.3), Inches(6.33), Inches(4.3), Inches(0.38),
+                size=13, color=C_GRAY)
+
+    slide_number(sl, slide_num)
+    return sl
+
+
+def s_hq_cost(prs, slide_num):
+    """本部経費・商標料スライド"""
+    sl = blank_slide(prs)
+    bg(sl)
+    slide_header(sl, "HQ COST", "本部経費・商標料　――　スケールと共に整備する", slide_num)
+
+    # 左：本部経費計画
+    add_textbox(sl, "本部経費ロードマップ（Year3〜）",
+                Inches(0.65), Inches(1.85), Inches(6.0), Inches(0.45),
+                size=16, bold=True, color=C_ACCENT)
+
+    hq_rows = [
+        ("3年目",  "0.3億円",  "SV1名・経理外注・小オフィス"),
+        ("4年目",  "0.8億円",  "SV2名・人事採用・本部スタッフ3名"),
+        ("5年目",  "1.5億円",  "本部スタッフ6名・FC支援チーム"),
+        ("6年目",  "2.5億円",  "SV5名・マーケ専任・IT担当"),
+        ("7年目",  "4.0億円",  "本部組織完成形（100店舗対応）"),
+        ("8〜10年目", "5〜7億円", "上場準備・海外展開準備コスト"),
+    ]
+    for i, (yr, cost, note) in enumerate(hq_rows):
+        y = Inches(2.45 + i * 0.7)
+        bg_c = RGBColor(0x3A, 0x2A, 0x08) if yr == "7年目" else RGBColor(0x2A, 0x1E, 0x12)
+        add_rect(sl, Inches(0.55), y, Inches(6.3), Inches(0.65), bg_c)
+        add_textbox(sl, yr,   Inches(0.7),  y + Inches(0.1), Inches(1.0), Inches(0.45),
+                    size=14, bold=(yr == "7年目"), color=C_ACCENT)
+        add_textbox(sl, cost, Inches(1.75), y + Inches(0.1), Inches(1.2), Inches(0.45),
+                    size=16, bold=True, color=C_WHITE)
+        add_textbox(sl, note, Inches(3.0),  y + Inches(0.12), Inches(3.7), Inches(0.42),
+                    size=12, color=C_GRAY)
+
+    # 右：商標料・システム料
+    add_textbox(sl, "商標料・システム料（売上の1%）",
+                Inches(7.3), Inches(1.85), Inches(5.7), Inches(0.45),
+                size=16, bold=True, color=C_ACCENT)
+
+    add_textbox(sl,
+                "全店舗売上に対して1%を\nグループ本部へ計上。\n\n"
+                "・ブランド維持費（商標登録・更新）\n"
+                "・POSシステム・オペレーションツール\n"
+                "・本部マーケティング共通費\n"
+                "・FC加盟店サポート費用",
+                Inches(7.3), Inches(2.45), Inches(5.7), Inches(2.2),
+                size=15, color=C_LIGHT)
+
+    add_rect(sl, Inches(7.1), Inches(4.8), Inches(5.9), Inches(0.55), C_ACCENT)
+    add_textbox(sl, "7年目 商標料・システム料収入",
+                Inches(7.2), Inches(4.83), Inches(3.5), Inches(0.44),
+                size=14, bold=True, color=C_BG)
+    add_textbox(sl, f"約{ROYALTY[6]:.1f}億円/年",
+                Inches(10.6), Inches(4.83), Inches(2.2), Inches(0.44),
+                size=18, bold=True, color=C_BG, align=PP_ALIGN.RIGHT)
+
+    add_textbox(sl,
+                "本部収益＝FC加盟金＋ロイヤリティ（3%）＋商標料（1%）\n"
+                "→ 100店舗時、本部だけで年商ベース約35億円規模のグループ収入",
+                Inches(7.1), Inches(5.55), Inches(5.9), Inches(1.0),
+                size=13, color=C_LIGHT, italic=True)
+
+    # 利益率への影響
+    add_rect(sl, Inches(0.55), Inches(6.75), Inches(12.3), Inches(0.55),
+             RGBColor(0x2A, 0x1E, 0x12))
+    add_textbox(sl,
+                "本部経費・商標料控除後の実効営業利益率：Year3〜9% / Year7〜12% / Year10〜13%（15%から約2〜3%下方修正）",
+                Inches(0.7), Inches(6.8), Inches(12.0), Inches(0.44),
+                size=13, bold=True, color=C_ACCENT)
+
+    slide_number(sl, slide_num)
+    return sl
+
+
 def main():
     prs = new_prs()
+    total = 23
 
     s01_title(prs)
     s02_vision(prs)
@@ -1357,6 +1566,7 @@ def main():
     s08_pl(prs)
     s09_finance(prs)
     s10_roadmap(prs)
+    s_group_strategy(prs, slide_num=11)
     s11_strategy(prs)
     s13_open_strategy(prs)
     s14_fc_strategy(prs)
@@ -1364,7 +1574,8 @@ def main():
     s16_brand_sns(prs)
     s17_operations(prs)
     s18_data_kpi(prs)
-    s_growth_chart(prs, slide_num=19)
+    s_hq_cost(prs, slide_num=19)
+    s_growth_chart(prs, slide_num=20)
     s19_risk(prs)
     s20_action_plan(prs)
     s12_closing(prs)
