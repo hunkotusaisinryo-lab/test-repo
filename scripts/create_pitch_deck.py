@@ -1,13 +1,12 @@
 """
 肉酒場 然（ぜん）事業計画 ピッチデック生成スクリプト
-python-pptx を使用
+python-pptx を使用 — 大フォント・余白重視・大型レイアウト版
 """
 
 from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
-from pptx.util import Inches, Pt
 import os
 import io
 from datetime import datetime
@@ -15,7 +14,6 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
-import matplotlib.patches as mpatches
 import numpy as np
 
 # 日本語フォント設定
@@ -25,16 +23,31 @@ _jp_prop = fm.FontProperties(fname=_JP_FONT)
 matplotlib.rcParams["font.family"] = _jp_prop.get_name()
 
 # === カラーパレット ===
-C_BG       = RGBColor(0x1A, 0x12, 0x0B)   # 深い焦げ茶（和の闇）
-C_ACCENT   = RGBColor(0xC8, 0x96, 0x3C)   # 金色（麹・稲穂）
+C_BG       = RGBColor(0x1A, 0x12, 0x0B)
+C_ACCENT   = RGBColor(0xC8, 0x96, 0x3C)
 C_WHITE    = RGBColor(0xFF, 0xFF, 0xFF)
-C_LIGHT    = RGBColor(0xF0, 0xE6, 0xD3)   # 生成り（和紙）
-C_GRAY     = RGBColor(0x8A, 0x7A, 0x6A)   # 灰茶
-C_RED      = RGBColor(0xC0, 0x39, 0x2B)   # 朱色
-C_GREEN    = RGBColor(0x27, 0x7A, 0x5A)   # 緑
+C_LIGHT    = RGBColor(0xF0, 0xE6, 0xD3)
+C_GRAY     = RGBColor(0x8A, 0x7A, 0x6A)
+C_RED      = RGBColor(0xC0, 0x39, 0x2B)
+C_GREEN    = RGBColor(0x27, 0x7A, 0x5A)
 
 SLIDE_W = Inches(13.33)
 SLIDE_H = Inches(7.5)
+
+BG_HEX  = "#1A120B"
+ACC_HEX = "#C8963C"
+WHT_HEX = "#FFFFFF"
+GRY_HEX = "#8A7A6A"
+LGT_HEX = "#F0E6D3"
+GRN_HEX = "#277A5A"
+RED_HEX = "#C0392B"
+
+# 10年間データ
+YEARS       = list(range(1, 11))
+STORES      = [1, 2, 5, 15, 30, 65, 100, 120, 140, 160]
+REVENUE     = [0.4, 1.7, 4.3, 13.0, 25.9, 56.2, 86.4, 103.7, 120.9, 138.2]
+MARGIN_RATE = [0.05, 0.07, 0.09, 0.11, 0.12, 0.13, 0.15, 0.15, 0.15, 0.16]
+PROFIT      = [round(r * m, 1) for r, m in zip(REVENUE, MARGIN_RATE)]
 
 
 def new_prs():
@@ -45,7 +58,7 @@ def new_prs():
 
 
 def blank_slide(prs):
-    layout = prs.slide_layouts[6]  # completely blank
+    layout = prs.slide_layouts[6]
     return prs.slides.add_slide(layout)
 
 
@@ -74,7 +87,7 @@ def add_textbox(slide, text, left, top, width, height,
 
 def add_rect(slide, left, top, width, height, color):
     shape = slide.shapes.add_shape(
-        1,  # MSO_SHAPE_TYPE.RECTANGLE
+        1,
         left, top, width, height
     )
     shape.fill.solid()
@@ -91,31 +104,26 @@ def add_line(slide, left, top, width, color=C_ACCENT, height=Pt(1.5)):
     return rect
 
 
-# ─── グラフ生成ヘルパー ───────────────────────────────────────────
+def slide_number(slide, num, total=21):
+    add_textbox(slide, f"{num} / {total}",
+                Inches(12.5), Inches(7.1), Inches(0.8), Inches(0.3),
+                size=10, color=C_GRAY, align=PP_ALIGN.RIGHT)
 
-BG_HEX  = "#1A120B"
-ACC_HEX = "#C8963C"
-WHT_HEX = "#FFFFFF"
-GRY_HEX = "#8A7A6A"
-LGT_HEX = "#F0E6D3"
-GRN_HEX = "#277A5A"
-RED_HEX = "#C0392B"
 
-# 10年間データ
-YEARS       = list(range(1, 11))
-STORES      = [1, 2, 5, 15, 30, 65, 100, 120, 140, 160]
-# グループ年商（億円）：店舗数×月商720万×12ヶ月。1年目は開業6ヶ月想定
-REVENUE     = [round(s * 720 * 12 / 10000 * (0.5 if i == 0 else 1.0), 1)
-               for i, s in enumerate(STORES)]
-# 営業利益（億円）：立ち上げ低め、FC比率上昇で15%台へ収束
-MARGIN_RATE = [0.05, 0.07, 0.09, 0.11, 0.12, 0.13, 0.15, 0.15, 0.15, 0.16]
-PROFIT      = [round(r * m, 1) for r, m in zip(REVENUE, MARGIN_RATE)]
-# 企業価値（億円）：営業利益×25倍PER（成長企業想定）
-VALUATION   = [round(p * 25, 0) for p in PROFIT]
+def slide_header(sl, section_tag, title, slide_num):
+    """標準ヘッダー: 左帯 + セクションタグ + タイトル + 区切り線"""
+    add_rect(sl, 0, 0, Inches(0.3), SLIDE_H, C_ACCENT)
+    add_textbox(sl, section_tag, Inches(0.65), Inches(0.35), Inches(6), Inches(0.45),
+                size=13, bold=True, color=C_ACCENT)
+    add_textbox(sl, title, Inches(0.65), Inches(0.78), Inches(12), Inches(0.75),
+                size=32, bold=True, color=C_WHITE)
+    add_line(sl, Inches(0.65), Inches(1.62), Inches(12.3))
+    slide_number(sl, slide_num)
 
+
+# ─── チャートヘルパー ─────────────────────────────────────────────
 
 def chart_to_image(fig):
-    """matplotlib figure → PNG bytes"""
     buf = io.BytesIO()
     fig.savefig(buf, format="png", bbox_inches="tight", dpi=150)
     plt.close(fig)
@@ -124,167 +132,61 @@ def chart_to_image(fig):
 
 
 def make_revenue_chart():
-    """年商推移（棒グラフ）"""
-    fig, ax = plt.subplots(figsize=(7.5, 4.2))
+    """年商推移（棒グラフ）— 大サイズ"""
+    fig, ax = plt.subplots(figsize=(8.5, 5.2))
     fig.patch.set_facecolor(BG_HEX)
     ax.set_facecolor("#2A1E12")
 
     x = np.arange(len(YEARS))
     bars = ax.bar(x, REVENUE, color=ACC_HEX, width=0.65, zorder=3)
 
-    # 100店舗達成ライン（7年目）
-    ax.axvline(x=6, color=RED_HEX, linewidth=1.2, linestyle="--", alpha=0.8)
-    ax.text(6.08, max(REVENUE) * 0.92, "100店舗達成\n(7年目)",
-            color=RED_HEX, fontsize=8.5, va="top")
+    ax.axvline(x=6, color=RED_HEX, linewidth=1.5, linestyle="--", alpha=0.85)
+    ax.text(6.1, max(REVENUE) * 0.9, "100店舗達成\n(7年目)",
+            color=RED_HEX, fontsize=10, va="top")
 
-    # 値ラベル
     for bar, val in zip(bars, REVENUE):
-        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.5,
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 1.5,
                 f"{val:.0f}億", ha="center", va="bottom",
-                color=WHT_HEX, fontsize=8.5, fontweight="bold")
+                color=WHT_HEX, fontsize=10, fontweight="bold")
 
     ax.set_xticks(x)
-    ax.set_xticklabels([f"{y}年目" for y in YEARS], color=LGT_HEX, fontsize=9)
-    ax.set_ylabel("グループ年商（億円）", color=GRY_HEX, fontsize=9)
-    ax.tick_params(colors=GRY_HEX)
+    ax.set_xticklabels([f"{y}年目" for y in YEARS], color=LGT_HEX, fontsize=11)
+    ax.set_ylabel("グループ年商（億円）", color=GRY_HEX, fontsize=11)
+    ax.tick_params(colors=GRY_HEX, labelsize=10)
     ax.spines[:].set_color("#3A2A18")
     ax.yaxis.set_tick_params(labelcolor=GRY_HEX)
     ax.grid(axis="y", color="#3A2A18", linewidth=0.7, zorder=0)
-    ax.set_title("グループ年商推移（10年）", color=WHT_HEX, fontsize=11, pad=8)
-    fig.tight_layout(pad=1.0)
+    ax.set_title("グループ年商推移（10年）", color=WHT_HEX, fontsize=13, pad=10)
+    fig.tight_layout(pad=1.2)
     return chart_to_image(fig)
 
 
 def make_profit_chart():
-    """営業利益推移（折れ線）"""
-    fig, ax = plt.subplots(figsize=(7.5, 4.2))
+    """営業利益推移（折れ線）— 大サイズ"""
+    fig, ax = plt.subplots(figsize=(8.5, 5.2))
     fig.patch.set_facecolor(BG_HEX)
     ax.set_facecolor("#2A1E12")
 
     x = np.arange(len(YEARS))
-    ax.fill_between(x, PROFIT, alpha=0.25, color=GRN_HEX)
-    ax.plot(x, PROFIT, color=GRN_HEX, linewidth=2.5, marker="o",
-            markersize=6, zorder=4)
+    ax.fill_between(x, PROFIT, alpha=0.28, color=GRN_HEX)
+    ax.plot(x, PROFIT, color=GRN_HEX, linewidth=3.0, marker="o",
+            markersize=8, zorder=4)
 
     for xi, val in zip(x, PROFIT):
-        ax.text(xi, val + 0.3, f"{val:.1f}億",
+        ax.text(xi, val + 0.5, f"{val:.1f}億",
                 ha="center", va="bottom", color=GRN_HEX,
-                fontsize=8.5, fontweight="bold")
+                fontsize=10, fontweight="bold")
 
     ax.set_xticks(x)
-    ax.set_xticklabels([f"{y}年目" for y in YEARS], color=LGT_HEX, fontsize=9)
-    ax.set_ylabel("営業利益（億円）", color=GRY_HEX, fontsize=9)
-    ax.tick_params(colors=GRY_HEX)
+    ax.set_xticklabels([f"{y}年目" for y in YEARS], color=LGT_HEX, fontsize=11)
+    ax.set_ylabel("営業利益（億円）", color=GRY_HEX, fontsize=11)
+    ax.tick_params(colors=GRY_HEX, labelsize=10)
     ax.spines[:].set_color("#3A2A18")
     ax.yaxis.set_tick_params(labelcolor=GRY_HEX)
     ax.grid(axis="y", color="#3A2A18", linewidth=0.7, zorder=0)
-    ax.set_title("営業利益推移（10年）", color=WHT_HEX, fontsize=11, pad=8)
-    fig.tight_layout(pad=1.0)
+    ax.set_title("営業利益推移（10年）", color=WHT_HEX, fontsize=13, pad=10)
+    fig.tight_layout(pad=1.2)
     return chart_to_image(fig)
-
-
-def make_valuation_chart():
-    """企業価値推移（棒＋折れ線コンボ）"""
-    fig, ax1 = plt.subplots(figsize=(7.5, 4.2))
-    fig.patch.set_facecolor(BG_HEX)
-    ax1.set_facecolor("#2A1E12")
-
-    x = np.arange(len(YEARS))
-    # 企業価値バー
-    bars = ax1.bar(x, VALUATION, color="#7A5C2C", width=0.65, zorder=3, label="企業価値")
-    ax1.set_ylabel("企業価値（億円）", color=ACC_HEX, fontsize=9)
-    ax1.tick_params(axis="y", colors=ACC_HEX)
-
-    # 値ラベル（7年目・10年目のみ）
-    for i in [6, 9]:
-        bar = bars[i]
-        ax1.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 5,
-                 f"{VALUATION[i]:.0f}億",
-                 ha="center", va="bottom", color=ACC_HEX,
-                 fontsize=9, fontweight="bold")
-
-    # 店舗数折れ線（右軸）
-    ax2 = ax1.twinx()
-    ax2.set_facecolor("#2A1E12")
-    ax2.plot(x, STORES, color=WHT_HEX, linewidth=2.0, marker="s",
-             markersize=5, zorder=5, label="店舗数")
-    ax2.set_ylabel("店舗数", color=WHT_HEX, fontsize=9)
-    ax2.tick_params(axis="y", colors=GRY_HEX)
-
-    ax1.set_xticks(x)
-    ax1.set_xticklabels([f"{y}年目" for y in YEARS], color=LGT_HEX, fontsize=9)
-    ax1.spines[:].set_color("#3A2A18")
-    ax2.spines[:].set_color("#3A2A18")
-    ax1.yaxis.set_tick_params(labelcolor=ACC_HEX)
-    ax1.grid(axis="y", color="#3A2A18", linewidth=0.7, zorder=0)
-
-    legend_items = [
-        mpatches.Patch(color="#7A5C2C", label="企業価値（PER25×）"),
-        plt.Line2D([0], [0], color=WHT_HEX, marker="s", markersize=5, label="店舗数"),
-    ]
-    ax1.legend(handles=legend_items, loc="upper left",
-               facecolor="#2A1E12", edgecolor="#3A2A18",
-               labelcolor=LGT_HEX, fontsize=8)
-    ax1.set_title("企業価値推移（10年）", color=WHT_HEX, fontsize=11, pad=8)
-    fig.tight_layout(pad=1.0)
-    return chart_to_image(fig)
-
-
-def s_growth_chart(prs, slide_num):
-    """成長・財務チャートスライド（グラフ3本）"""
-    sl = blank_slide(prs)
-    bg(sl)
-    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
-
-    add_textbox(sl, "10-YEAR GROWTH", Inches(0.6), Inches(0.4), Inches(6), Inches(0.5),
-                size=11, bold=True, color=C_ACCENT)
-    add_textbox(sl, "10年財務成長シナリオ", Inches(0.6), Inches(0.75),
-                Inches(11), Inches(0.7), size=28, bold=True, color=C_WHITE)
-    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
-
-    # サマリーKPI（4ボックス）
-    kpis = [
-        ("7年目 店舗数",  "100店舗"),
-        ("7年目 年商",    "86億円"),
-        ("7年目 営業利益","約13億円"),
-        ("7年目 企業価値","約325億円"),
-    ]
-    for i, (label, val) in enumerate(kpis):
-        x = Inches(0.5 + i * 3.2)
-        add_rect(sl, x, Inches(1.75), Inches(3.0), Inches(0.85),
-                 RGBColor(0x3A, 0x2A, 0x08))
-        add_textbox(sl, label, x + Inches(0.1), Inches(1.8),
-                    Inches(2.8), Inches(0.3), size=10, color=C_GRAY,
-                    align=PP_ALIGN.CENTER)
-        add_textbox(sl, val, x + Inches(0.1), Inches(2.1),
-                    Inches(2.8), Inches(0.44), size=18, bold=True,
-                    color=C_ACCENT, align=PP_ALIGN.CENTER)
-
-    # グラフ3枚を横並び
-    charts = [
-        (make_revenue_chart,   Inches(0.4),  Inches(2.75), Inches(4.1), Inches(2.5)),
-        (make_profit_chart,    Inches(4.6),  Inches(2.75), Inches(4.1), Inches(2.5)),
-        (make_valuation_chart, Inches(8.8),  Inches(2.75), Inches(4.3), Inches(2.5)),
-    ]
-    for fn, left, top, w, h in charts:
-        img_buf = fn()
-        sl.shapes.add_picture(img_buf, left, top, w, h)
-
-    # 前提注記
-    add_textbox(sl,
-                "※ 企業価値はPER25倍で試算（外食FC上場企業の参考値）。"
-                "月商720万円/店・稼働率100%を前提とした最大値シナリオ。",
-                Inches(0.5), Inches(7.1), Inches(12.3), Inches(0.3),
-                size=10, color=C_GRAY, align=PP_ALIGN.CENTER, italic=True)
-
-    slide_number(sl, slide_num)
-    return sl
-
-
-def slide_number(slide, num, total=21):
-    add_textbox(slide, f"{num} / {total}",
-                Inches(12.5), Inches(7.1), Inches(0.8), Inches(0.3),
-                size=9, color=C_GRAY, align=PP_ALIGN.RIGHT)
 
 
 # ─────────────────────────────────────────
@@ -292,33 +194,26 @@ def slide_number(slide, num, total=21):
 # ─────────────────────────────────────────
 
 def s01_title(prs):
-    """タイトル"""
     sl = blank_slide(prs)
     bg(sl)
+    add_rect(sl, 0, 0, Inches(0.3), SLIDE_H, C_ACCENT)
 
-    # 左帯
-    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
+    add_textbox(sl, "肉酒場", Inches(1.1), Inches(0.9), Inches(7), Inches(1.0),
+                size=42, bold=True, color=C_ACCENT)
+    add_textbox(sl, "然（ぜん）", Inches(1.1), Inches(1.8), Inches(7), Inches(1.6),
+                size=80, bold=True, color=C_WHITE)
 
-    # ロゴタイプ
-    add_textbox(sl, "肉酒場", Inches(1.0), Inches(1.0), Inches(6), Inches(1.0),
-                size=36, bold=True, color=C_ACCENT)
-    add_textbox(sl, "然（ぜん）", Inches(1.0), Inches(1.9), Inches(6), Inches(1.4),
-                size=72, bold=True, color=C_WHITE)
-
-    # キャッチコピー
-    add_line(sl, Inches(1.0), Inches(3.5), Inches(5), color=C_ACCENT)
+    add_line(sl, Inches(1.1), Inches(3.6), Inches(5.5), color=C_ACCENT)
     add_textbox(sl, "糀漬け肉の定食と、和の一杯。",
-                Inches(1.0), Inches(3.65), Inches(7), Inches(0.6),
-                size=22, italic=True, color=C_LIGHT)
+                Inches(1.1), Inches(3.78), Inches(8), Inches(0.7),
+                size=24, italic=True, color=C_LIGHT)
 
-    # サブ
     add_textbox(sl, "事業計画書　2026年6月",
-                Inches(1.0), Inches(4.5), Inches(5), Inches(0.5),
-                size=14, color=C_GRAY)
+                Inches(1.1), Inches(4.7), Inches(6), Inches(0.55),
+                size=16, color=C_GRAY)
 
-    # 右側 大きな漢字装飾
-    add_textbox(sl, "然", Inches(9.5), Inches(0.8), Inches(3.5), Inches(5.5),
-                size=220, bold=True, color=RGBColor(0x2A, 0x1E, 0x12),
+    add_textbox(sl, "然", Inches(9.2), Inches(0.5), Inches(3.8), Inches(6.0),
+                size=240, bold=True, color=RGBColor(0x2A, 0x1E, 0x12),
                 align=PP_ALIGN.CENTER)
 
     slide_number(sl, 1)
@@ -326,99 +221,74 @@ def s01_title(prs):
 
 
 def s02_vision(prs):
-    """ビジョン"""
     sl = blank_slide(prs)
     bg(sl)
-    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
+    slide_header(sl, "VISION", "私たちのビジョン", 2)
 
-    add_textbox(sl, "VISION", Inches(0.6), Inches(0.4), Inches(4), Inches(0.5),
-                size=11, bold=True, color=C_ACCENT)
-    add_textbox(sl, "私たちのビジョン", Inches(0.6), Inches(0.75), Inches(8), Inches(0.7),
-                size=28, bold=True, color=C_WHITE)
-    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
-
-    # 大きなビジョン文
     add_textbox(sl, "7年で100店舗。",
-                Inches(0.6), Inches(2.0), Inches(12), Inches(1.2),
-                size=54, bold=True, color=C_ACCENT, align=PP_ALIGN.CENTER)
+                Inches(0.65), Inches(2.0), Inches(12.5), Inches(1.3),
+                size=60, bold=True, color=C_ACCENT, align=PP_ALIGN.CENTER)
 
     add_textbox(sl,
                 "発酵と肉の掛け合わせで、\n日本の食文化に新しい定番をつくる。",
-                Inches(0.6), Inches(3.4), Inches(12), Inches(1.2),
-                size=24, color=C_LIGHT, align=PP_ALIGN.CENTER)
+                Inches(0.65), Inches(3.5), Inches(12.5), Inches(1.3),
+                size=28, color=C_LIGHT, align=PP_ALIGN.CENTER)
 
     add_textbox(sl,
                 "居酒屋×発酵×定食　という空白地帯に参入し、\n"
                 "糀漬け肉料理を「日本の新定番」として全国に広める。",
-                Inches(1.5), Inches(5.0), Inches(10), Inches(1.2),
-                size=16, color=C_GRAY, align=PP_ALIGN.CENTER, italic=True)
+                Inches(1.8), Inches(5.1), Inches(10), Inches(1.1),
+                size=17, color=C_GRAY, align=PP_ALIGN.CENTER, italic=True)
 
-    slide_number(sl, 2)
     return sl
 
 
 def s03_why_now(prs):
-    """なぜ今か — 市場環境"""
     sl = blank_slide(prs)
     bg(sl)
-    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
+    slide_header(sl, "MARKET", "なぜ今か　――　市場の追い風", 3)
 
-    add_textbox(sl, "MARKET", Inches(0.6), Inches(0.4), Inches(4), Inches(0.5),
-                size=11, bold=True, color=C_ACCENT)
-    add_textbox(sl, "なぜ今か　――　市場の追い風", Inches(0.6), Inches(0.75),
-                Inches(9), Inches(0.7), size=28, bold=True, color=C_WHITE)
-    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
-
-    # 3ボックス
     boxes = [
         ("外食産業", "35.7兆円", "2025年市場規模\n（前年比＋3.5%）"),
         ("居酒屋業態", "48ヶ月連続", "売上前年比プラス\nコロナ前超え達成"),
         ("発酵食品", "SNS急拡大", "健康志向×体験価値\nZ世代・40代双方に刺さる"),
     ]
     for i, (title, big, sub) in enumerate(boxes):
-        x = Inches(0.6 + i * 4.1)
-        add_rect(sl, x, Inches(2.0), Inches(3.8), Inches(4.2),
+        x = Inches(0.65 + i * 4.2)
+        add_rect(sl, x, Inches(1.9), Inches(4.0), Inches(4.5),
                  RGBColor(0x2A, 0x1E, 0x12))
-        add_textbox(sl, title, x + Inches(0.15), Inches(2.15),
-                    Inches(3.5), Inches(0.5), size=14, color=C_ACCENT, bold=True)
-        add_textbox(sl, big, x + Inches(0.1), Inches(2.7),
-                    Inches(3.6), Inches(0.9), size=32, bold=True, color=C_WHITE,
+        add_textbox(sl, title, x + Inches(0.2), Inches(2.1),
+                    Inches(3.6), Inches(0.55), size=18, color=C_ACCENT, bold=True)
+        add_textbox(sl, big, x + Inches(0.1), Inches(2.75),
+                    Inches(3.8), Inches(1.0), size=36, bold=True, color=C_WHITE,
                     align=PP_ALIGN.CENTER)
-        add_textbox(sl, sub, x + Inches(0.1), Inches(3.7),
-                    Inches(3.6), Inches(0.8), size=13, color=C_GRAY,
+        add_textbox(sl, sub, x + Inches(0.1), Inches(3.85),
+                    Inches(3.8), Inches(0.9), size=15, color=C_GRAY,
                     align=PP_ALIGN.CENTER)
 
     add_textbox(sl,
                 "→ 出店タイミングは今が最適。居酒屋×発酵×定食の空白地帯は誰もいない。",
-                Inches(0.6), Inches(6.4), Inches(12), Inches(0.6),
-                size=16, bold=True, color=C_ACCENT, align=PP_ALIGN.CENTER)
+                Inches(0.65), Inches(6.5), Inches(12.3), Inches(0.65),
+                size=18, bold=True, color=C_ACCENT, align=PP_ALIGN.CENTER)
 
-    slide_number(sl, 3)
     return sl
 
 
 def s04_concept(prs):
-    """コンセプト"""
     sl = blank_slide(prs)
     bg(sl)
-    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
-
-    add_textbox(sl, "CONCEPT", Inches(0.6), Inches(0.4), Inches(4), Inches(0.5),
-                size=11, bold=True, color=C_ACCENT)
-    add_textbox(sl, "肉酒場 然のコンセプト", Inches(0.6), Inches(0.75),
-                Inches(9), Inches(0.7), size=28, bold=True, color=C_WHITE)
-    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
+    slide_header(sl, "CONCEPT", "肉酒場 然のコンセプト", 4)
 
     # 左：コンセプト説明
-    add_textbox(sl, "業態定義", Inches(0.6), Inches(1.8), Inches(5.5), Inches(0.4),
-                size=12, bold=True, color=C_ACCENT)
+    add_textbox(sl, "業態定義", Inches(0.65), Inches(1.85), Inches(5.8), Inches(0.45),
+                size=14, bold=True, color=C_ACCENT)
     add_textbox(sl,
                 "昼：糀漬け肉定食の専門店\n夜：発酵×肉の創作酒場",
-                Inches(0.6), Inches(2.2), Inches(5.5), Inches(0.9),
-                size=20, bold=True, color=C_WHITE)
+                Inches(0.65), Inches(2.35), Inches(5.8), Inches(1.0),
+                size=22, bold=True, color=C_WHITE)
 
-    add_textbox(sl, "三つの独自性", Inches(0.6), Inches(3.3), Inches(5.5), Inches(0.4),
-                size=12, bold=True, color=C_ACCENT)
+    add_textbox(sl, "三つの独自性", Inches(0.65), Inches(3.5), Inches(5.8), Inches(0.45),
+                size=14, bold=True, color=C_ACCENT)
 
     points = [
         ("糀漬け×低温調理", "前日仕込みで品質均一化。FC展開時の再現性を担保。"),
@@ -426,19 +296,19 @@ def s04_concept(prs):
         ("石板焼き体験", "煙・音・ロゼ色の断面がSNS映え。来店動機を設計する。"),
     ]
     for i, (head, body) in enumerate(points):
-        y = Inches(3.75 + i * 0.95)
-        add_rect(sl, Inches(0.6), y, Inches(0.06), Inches(0.65), C_ACCENT)
-        add_textbox(sl, head, Inches(0.8), y, Inches(2.0), Inches(0.35),
-                    size=14, bold=True, color=C_WHITE)
-        add_textbox(sl, body, Inches(0.8), y + Inches(0.35), Inches(5.0), Inches(0.4),
-                    size=12, color=C_GRAY)
+        y = Inches(4.05 + i * 0.98)
+        add_rect(sl, Inches(0.65), y + Inches(0.05), Inches(0.07), Inches(0.68), C_ACCENT)
+        add_textbox(sl, head, Inches(0.88), y, Inches(2.2), Inches(0.38),
+                    size=16, bold=True, color=C_WHITE)
+        add_textbox(sl, body, Inches(0.88), y + Inches(0.4), Inches(5.2), Inches(0.45),
+                    size=14, color=C_GRAY)
 
-    # 右：ポジショニング図（テキストで表現）
-    add_rect(sl, Inches(7.0), Inches(1.8), Inches(5.8), Inches(5.0),
+    # 右：ポジショニング図
+    add_rect(sl, Inches(7.0), Inches(1.85), Inches(6.0), Inches(5.2),
              RGBColor(0x2A, 0x1E, 0x12))
     add_textbox(sl, "ポジショニングマップ",
-                Inches(7.1), Inches(1.9), Inches(5.6), Inches(0.4),
-                size=12, bold=True, color=C_ACCENT)
+                Inches(7.15), Inches(2.0), Inches(5.7), Inches(0.45),
+                size=14, bold=True, color=C_ACCENT)
 
     map_text = (
         "       健康・発酵（高）\n"
@@ -452,28 +322,20 @@ def s04_concept(prs):
         "            ↓\n"
         "       健康・発酵（低）"
     )
-    add_textbox(sl, map_text, Inches(7.1), Inches(2.4), Inches(5.6), Inches(3.8),
-                size=11, color=C_LIGHT)
+    add_textbox(sl, map_text, Inches(7.15), Inches(2.55), Inches(5.7), Inches(3.8),
+                size=13, color=C_LIGHT)
 
     add_textbox(sl, "「健康・発酵 × 肉 × ランチ＆ディナー」\nは競合ゼロの完全空白地帯",
-                Inches(7.1), Inches(6.1), Inches(5.6), Inches(0.7),
-                size=12, bold=True, color=C_ACCENT)
+                Inches(7.15), Inches(6.35), Inches(5.7), Inches(0.75),
+                size=14, bold=True, color=C_ACCENT)
 
-    slide_number(sl, 4)
     return sl
 
 
 def s05_products(prs):
-    """看板3商品"""
     sl = blank_slide(prs)
     bg(sl)
-    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
-
-    add_textbox(sl, "PRODUCT", Inches(0.6), Inches(0.4), Inches(4), Inches(0.5),
-                size=11, bold=True, color=C_ACCENT)
-    add_textbox(sl, "看板3品　――　これを食べに来る", Inches(0.6), Inches(0.75),
-                Inches(9), Inches(0.7), size=28, bold=True, color=C_WHITE)
-    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
+    slide_header(sl, "PRODUCT", "看板3品　――　これを食べに来る", 5)
 
     products = [
         {
@@ -503,66 +365,50 @@ def s05_products(prs):
     ]
 
     for i, p in enumerate(products):
-        x = Inches(0.5 + i * 4.2)
-        # カード背景
-        add_rect(sl, x, Inches(1.8), Inches(4.0), Inches(5.2),
+        x = Inches(0.55 + i * 4.25)
+        add_rect(sl, x, Inches(1.85), Inches(4.05), Inches(5.25),
                  RGBColor(0x2A, 0x1E, 0x12))
-        # No
-        add_textbox(sl, p["no"], x + Inches(0.15), Inches(1.95),
-                    Inches(0.6), Inches(0.4), size=11, bold=True, color=C_ACCENT)
-        # フック
-        add_rect(sl, x + Inches(2.0), Inches(1.95), Inches(1.8), Inches(0.32),
+        add_textbox(sl, p["no"], x + Inches(0.2), Inches(2.0),
+                    Inches(0.65), Inches(0.45), size=13, bold=True, color=C_ACCENT)
+        add_rect(sl, x + Inches(1.9), Inches(2.02), Inches(1.95), Inches(0.36),
                  C_ACCENT)
-        add_textbox(sl, p["hook"], x + Inches(2.0), Inches(1.95),
-                    Inches(1.8), Inches(0.32), size=10, bold=True,
+        add_textbox(sl, p["hook"], x + Inches(1.9), Inches(2.02),
+                    Inches(1.95), Inches(0.36), size=12, bold=True,
                     color=C_BG, align=PP_ALIGN.CENTER)
-        # 商品名
-        add_textbox(sl, p["name"], x + Inches(0.15), Inches(2.4),
-                    Inches(3.7), Inches(0.8), size=18, bold=True, color=C_WHITE)
-        # 価格
-        add_textbox(sl, p["price"], x + Inches(0.15), Inches(3.3),
-                    Inches(3.7), Inches(0.55), size=28, bold=True, color=C_ACCENT)
-        # 説明
-        add_textbox(sl, p["desc"], x + Inches(0.15), Inches(3.95),
-                    Inches(3.7), Inches(0.9), size=12, color=C_LIGHT)
-        # 原価率
-        add_textbox(sl, p["cost"], x + Inches(0.15), Inches(5.0),
-                    Inches(3.7), Inches(0.35), size=11, color=C_GRAY)
+        add_textbox(sl, p["name"], x + Inches(0.2), Inches(2.5),
+                    Inches(3.65), Inches(0.95), size=20, bold=True, color=C_WHITE)
+        add_textbox(sl, p["price"], x + Inches(0.2), Inches(3.55),
+                    Inches(3.65), Inches(0.65), size=32, bold=True, color=C_ACCENT)
+        add_textbox(sl, p["desc"], x + Inches(0.2), Inches(4.3),
+                    Inches(3.65), Inches(0.95), size=14, color=C_LIGHT)
+        add_textbox(sl, p["cost"], x + Inches(0.2), Inches(5.35),
+                    Inches(3.65), Inches(0.4), size=13, color=C_GRAY)
 
     add_textbox(sl,
                 "全3品にライス・味噌汁・小鉢2品・漬物が付く。「体にいい定食」を徹底追求。",
-                Inches(0.5), Inches(7.0), Inches(12), Inches(0.35),
-                size=12, color=C_GRAY, align=PP_ALIGN.CENTER, italic=True)
+                Inches(0.55), Inches(7.1), Inches(12.3), Inches(0.3),
+                size=13, color=C_GRAY, align=PP_ALIGN.CENTER, italic=True)
 
-    slide_number(sl, 5)
     return sl
 
 
 def s06_competitor(prs):
-    """競合分析"""
     sl = blank_slide(prs)
     bg(sl)
-    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
+    slide_header(sl, "COMPETITION", "競合5店　繁盛の法則と然の優位性", 6)
 
-    add_textbox(sl, "COMPETITION", Inches(0.6), Inches(0.4), Inches(5), Inches(0.5),
-                size=11, bold=True, color=C_ACCENT)
-    add_textbox(sl, "競合5店　繁盛の法則と然の優位性", Inches(0.6), Inches(0.75),
-                Inches(10), Inches(0.7), size=28, bold=True, color=C_WHITE)
-    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
-
-    # テーブルヘッダー
     headers = ["店舗", "月商", "ランチ", "発酵", "肉特化", "FC展開"]
-    col_w   = [2.5, 1.5, 1.2, 1.2, 1.2, 1.2]
-    col_x   = [0.6]
+    col_w   = [2.7, 1.6, 1.3, 1.3, 1.3, 1.3]
+    col_x   = [0.65]
     for w in col_w[:-1]:
         col_x.append(col_x[-1] + w)
 
-    y_h = Inches(1.75)
-    add_rect(sl, Inches(0.5), y_h, Inches(12.3), Inches(0.38), C_ACCENT)
+    y_h = Inches(1.82)
+    add_rect(sl, Inches(0.55), y_h, Inches(12.3), Inches(0.42), C_ACCENT)
     for i, h in enumerate(headers):
-        add_textbox(sl, h, Inches(col_x[i] + 0.05), y_h + Inches(0.04),
-                    Inches(col_w[i]), Inches(0.3),
-                    size=11, bold=True, color=C_BG)
+        add_textbox(sl, h, Inches(col_x[i] + 0.06), y_h + Inches(0.05),
+                    Inches(col_w[i]), Inches(0.32),
+                    size=13, bold=True, color=C_BG)
 
     rows = [
         ["なかよし（恵比寿）",  "非公開", "◎", "△", "✗", "◎"],
@@ -574,56 +420,46 @@ def s06_competitor(prs):
     ]
 
     for r, row in enumerate(rows):
-        y_r = Inches(2.15 + r * 0.64)
+        y_r = Inches(2.26 + r * 0.68)
         bg_c = RGBColor(0x2A, 0x1E, 0x12) if r < 5 else RGBColor(0x3A, 0x2A, 0x08)
-        add_rect(sl, Inches(0.5), y_r, Inches(12.3), Inches(0.6), bg_c)
+        add_rect(sl, Inches(0.55), y_r, Inches(12.3), Inches(0.64), bg_c)
         for c, cell in enumerate(row):
             color = C_ACCENT if r == 5 else (C_WHITE if c == 0 else C_LIGHT)
             add_textbox(sl, cell,
-                        Inches(col_x[c] + 0.05), y_r + Inches(0.12),
-                        Inches(col_w[c]), Inches(0.38),
-                        size=12, bold=(r == 5), color=color)
+                        Inches(col_x[c] + 0.06), y_r + Inches(0.13),
+                        Inches(col_w[c]), Inches(0.42),
+                        size=14, bold=(r == 5), color=color)
 
     add_textbox(sl,
                 "「健康・発酵 × 肉 × ランチ×ディナー × FC」を同時に満たすのは然だけ",
-                Inches(0.5), Inches(7.0), Inches(12.3), Inches(0.35),
-                size=13, bold=True, color=C_ACCENT, align=PP_ALIGN.CENTER)
+                Inches(0.55), Inches(7.05), Inches(12.3), Inches(0.38),
+                size=15, bold=True, color=C_ACCENT, align=PP_ALIGN.CENTER)
 
-    slide_number(sl, 6)
     return sl
 
 
 def s07_profile(prs):
-    """代表者プロフィール"""
     sl = blank_slide(prs)
     bg(sl)
-    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
+    slide_header(sl, "FOUNDER", "代表者プロフィール", 7)
 
-    add_textbox(sl, "FOUNDER", Inches(0.6), Inches(0.4), Inches(4), Inches(0.5),
-                size=11, bold=True, color=C_ACCENT)
-    add_textbox(sl, "代表者プロフィール", Inches(0.6), Inches(0.75),
-                Inches(9), Inches(0.7), size=28, bold=True, color=C_WHITE)
-    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
-
-    # 経歴
-    add_textbox(sl, "経歴", Inches(0.6), Inches(1.75), Inches(5.5), Inches(0.4),
-                size=13, bold=True, color=C_ACCENT)
+    add_textbox(sl, "経歴", Inches(0.65), Inches(1.85), Inches(5.8), Inches(0.45),
+                size=15, bold=True, color=C_ACCENT)
     careers = [
         ("前職", "都内約25店舗展開　焼肉レストランブランド　運営本部長"),
         ("現 職", "やきとり家すみれ　運営本部長（SV体制構築・販促・業績管理）"),
         ("兼 業", "EC通販事業 経営メンバー（販売戦略・商品企画・数値分析）"),
     ]
     for i, (label, text) in enumerate(careers):
-        y = Inches(2.2 + i * 0.65)
-        add_rect(sl, Inches(0.6), y + Inches(0.05), Inches(0.06), Inches(0.42), C_ACCENT)
-        add_textbox(sl, label, Inches(0.8), y, Inches(1.0), Inches(0.35),
-                    size=11, color=C_ACCENT, bold=True)
-        add_textbox(sl, text, Inches(1.9), y, Inches(4.2), Inches(0.55),
-                    size=13, color=C_WHITE)
+        y = Inches(2.38 + i * 0.72)
+        add_rect(sl, Inches(0.65), y + Inches(0.08), Inches(0.07), Inches(0.48), C_ACCENT)
+        add_textbox(sl, label, Inches(0.87), y, Inches(1.0), Inches(0.38),
+                    size=13, color=C_ACCENT, bold=True)
+        add_textbox(sl, text, Inches(1.98), y, Inches(4.4), Inches(0.6),
+                    size=15, color=C_WHITE)
 
-    # 5つの強み
-    add_textbox(sl, "5つの強み", Inches(7.0), Inches(1.75), Inches(5.8), Inches(0.4),
-                size=13, bold=True, color=C_ACCENT)
+    add_textbox(sl, "5つの強み", Inches(7.2), Inches(1.85), Inches(5.8), Inches(0.45),
+                size=15, bold=True, color=C_ACCENT)
     strengths = [
         "複数店舗の運営経験（本部長として売上・利益・人材を総合管理）",
         "現場と経営の両立（現場課題と経営数値の両方を深く理解）",
@@ -632,41 +468,31 @@ def s07_profile(prs):
         "人材育成と仕組み化（属人化しない標準化・教育体制の構築）",
     ]
     for i, s in enumerate(strengths):
-        y = Inches(2.2 + i * 0.72)
-        add_rect(sl, Inches(7.0), y + Inches(0.1), Inches(5.8), Inches(0.52),
+        y = Inches(2.38 + i * 0.75)
+        add_rect(sl, Inches(7.1), y + Inches(0.08), Inches(5.9), Inches(0.58),
                  RGBColor(0x2A, 0x1E, 0x12))
-        add_textbox(sl, f"0{i+1}  {s}", Inches(7.15), y + Inches(0.1),
-                    Inches(5.5), Inches(0.5), size=12, color=C_LIGHT)
+        add_textbox(sl, f"0{i+1}  {s}", Inches(7.25), y + Inches(0.1),
+                    Inches(5.6), Inches(0.54), size=14, color=C_LIGHT)
 
-    # ひとこと
-    add_rect(sl, Inches(0.5), Inches(5.9), Inches(12.3), Inches(1.0),
+    add_rect(sl, Inches(0.55), Inches(6.05), Inches(12.3), Inches(1.05),
              RGBColor(0x2A, 0x1E, 0x12))
     add_textbox(sl,
                 "「飲食の現場と数字を両方知っている人間が、\n"
                 "　ゼロから作るブランドだから強い。」",
-                Inches(0.8), Inches(5.95), Inches(11.7), Inches(0.9),
-                size=16, italic=True, color=C_ACCENT, align=PP_ALIGN.CENTER)
+                Inches(0.85), Inches(6.12), Inches(11.7), Inches(0.9),
+                size=18, italic=True, color=C_ACCENT, align=PP_ALIGN.CENTER)
 
-    slide_number(sl, 7)
     return sl
 
 
 def s08_pl(prs):
-    """収支計画"""
     sl = blank_slide(prs)
     bg(sl)
-    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
+    slide_header(sl, "FINANCIALS", "収支計画　――　堅実な数字設計", 8)
 
-    add_textbox(sl, "FINANCIALS", Inches(0.6), Inches(0.4), Inches(5), Inches(0.5),
-                size=11, bold=True, color=C_ACCENT)
-    add_textbox(sl, "収支計画　――　堅実な数字設計", Inches(0.6), Inches(0.75),
-                Inches(10), Inches(0.7), size=28, bold=True, color=C_WHITE)
-    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
-
-    # 月次売上目標
     add_textbox(sl, "月次売上目標（安定期・30席）",
-                Inches(0.6), Inches(1.7), Inches(5.5), Inches(0.4),
-                size=13, bold=True, color=C_ACCENT)
+                Inches(0.65), Inches(1.82), Inches(6.0), Inches(0.45),
+                size=15, bold=True, color=C_ACCENT)
 
     sales_rows = [
         ("ランチ", "2,000円", "30席", "1.8回転", "25日", "270万円"),
@@ -674,55 +500,54 @@ def s08_pl(prs):
         ("合計", "", "", "", "", "720万円"),
     ]
     s_headers = ["", "客単価", "席数", "回転", "営業日", "売上"]
-    s_col_w = [1.1, 1.0, 0.8, 0.9, 0.8, 1.0]
-    s_col_x = [0.6]
+    s_col_w = [1.15, 1.05, 0.85, 0.95, 0.85, 1.05]
+    s_col_x = [0.65]
     for w in s_col_w[:-1]:
         s_col_x.append(s_col_x[-1] + w)
 
-    add_rect(sl, Inches(0.5), Inches(2.1), Inches(5.8), Inches(0.32), C_ACCENT)
+    add_rect(sl, Inches(0.55), Inches(2.3), Inches(6.1), Inches(0.36), C_ACCENT)
     for i, h in enumerate(s_headers):
-        add_textbox(sl, h, Inches(s_col_x[i]+0.03), Inches(2.12),
-                    Inches(s_col_w[i]), Inches(0.28), size=10, bold=True, color=C_BG)
+        add_textbox(sl, h, Inches(s_col_x[i]+0.04), Inches(2.32),
+                    Inches(s_col_w[i]), Inches(0.3), size=12, bold=True, color=C_BG)
 
     for r, row in enumerate(sales_rows):
-        y = Inches(2.44 + r * 0.48)
+        y = Inches(2.68 + r * 0.52)
         bg_c = RGBColor(0x3A, 0x2A, 0x08) if r == 2 else RGBColor(0x2A, 0x1E, 0x12)
-        add_rect(sl, Inches(0.5), y, Inches(5.8), Inches(0.46), bg_c)
+        add_rect(sl, Inches(0.55), y, Inches(6.1), Inches(0.5), bg_c)
         for c, cell in enumerate(row):
             col = C_ACCENT if (r == 2 and c == 5) else C_WHITE
-            add_textbox(sl, cell, Inches(s_col_x[c]+0.03), y + Inches(0.07),
-                        Inches(s_col_w[c]), Inches(0.35), size=12,
+            add_textbox(sl, cell, Inches(s_col_x[c]+0.04), y + Inches(0.08),
+                        Inches(s_col_w[c]), Inches(0.36), size=13,
                         bold=(r == 2), color=col)
 
-    # フェーズ別
     add_textbox(sl, "フェーズ別収支",
-                Inches(0.6), Inches(3.9), Inches(5.5), Inches(0.4),
-                size=13, bold=True, color=C_ACCENT)
+                Inches(0.65), Inches(4.2), Inches(6.0), Inches(0.45),
+                size=15, bold=True, color=C_ACCENT)
     phases = [
         ("立ち上げ期", "0〜3ヶ月", "360万", "▲72万", "C_RED"),
         ("成長期",     "3〜6ヶ月", "504万", "＋14万", "C_GRAY"),
         ("安定期",     "6ヶ月〜",  "648万", "＋142万", "C_GREEN"),
     ]
     for i, (ph, period, sales, profit, cc) in enumerate(phases):
-        y = Inches(4.35 + i * 0.62)
+        y = Inches(4.72 + i * 0.65)
         pcolor = C_RED if cc == "C_RED" else (C_GREEN if cc == "C_GREEN" else C_GRAY)
-        add_rect(sl, Inches(0.5), y, Inches(5.8), Inches(0.58),
+        add_rect(sl, Inches(0.55), y, Inches(6.1), Inches(0.6),
                  RGBColor(0x2A, 0x1E, 0x12))
-        add_textbox(sl, ph, Inches(0.65), y + Inches(0.1),
-                    Inches(1.5), Inches(0.38), size=13, bold=True, color=C_WHITE)
-        add_textbox(sl, period, Inches(2.1), y + Inches(0.1),
-                    Inches(1.2), Inches(0.38), size=12, color=C_GRAY)
-        add_textbox(sl, sales, Inches(3.3), y + Inches(0.1),
-                    Inches(1.3), Inches(0.38), size=13, color=C_LIGHT)
-        add_textbox(sl, profit, Inches(4.6), y + Inches(0.1),
-                    Inches(1.4), Inches(0.38), size=14, bold=True, color=pcolor)
+        add_textbox(sl, ph, Inches(0.7), y + Inches(0.1),
+                    Inches(1.6), Inches(0.42), size=15, bold=True, color=C_WHITE)
+        add_textbox(sl, period, Inches(2.2), y + Inches(0.1),
+                    Inches(1.3), Inches(0.42), size=14, color=C_GRAY)
+        add_textbox(sl, sales, Inches(3.4), y + Inches(0.1),
+                    Inches(1.3), Inches(0.42), size=14, color=C_LIGHT)
+        add_textbox(sl, profit, Inches(4.7), y + Inches(0.1),
+                    Inches(1.5), Inches(0.42), size=16, bold=True, color=pcolor)
 
     # 右：損益分岐
-    add_rect(sl, Inches(7.0), Inches(1.7), Inches(5.8), Inches(5.0),
+    add_rect(sl, Inches(7.1), Inches(1.82), Inches(6.0), Inches(5.3),
              RGBColor(0x2A, 0x1E, 0x12))
     add_textbox(sl, "損益分岐点分析",
-                Inches(7.1), Inches(1.8), Inches(5.6), Inches(0.4),
-                size=13, bold=True, color=C_ACCENT)
+                Inches(7.25), Inches(1.96), Inches(5.7), Inches(0.45),
+                size=15, bold=True, color=C_ACCENT)
 
     bep_items = [
         ("損益分岐点売上", "460万円/月"),
@@ -735,33 +560,24 @@ def s08_pl(prs):
         ("返済後手残り（安定期）", "約122万円/月"),
     ]
     for i, (k, v) in enumerate(bep_items):
-        y = Inches(2.3 + i * 0.54)
-        add_rect(sl, Inches(7.0), y, Inches(5.8), Inches(0.5),
+        y = Inches(2.5 + i * 0.56)
+        add_rect(sl, Inches(7.1), y, Inches(6.0), Inches(0.52),
                  RGBColor(0x22, 0x18, 0x0E) if i % 2 == 0 else RGBColor(0x2A, 0x1E, 0x12))
-        add_textbox(sl, k, Inches(7.15), y + Inches(0.08),
-                    Inches(3.2), Inches(0.38), size=12, color=C_GRAY)
+        add_textbox(sl, k, Inches(7.25), y + Inches(0.08),
+                    Inches(3.3), Inches(0.38), size=13, color=C_GRAY)
         vc = C_ACCENT if "利益" in k or "手残り" in k else C_WHITE
-        add_textbox(sl, v, Inches(10.3), y + Inches(0.08),
-                    Inches(2.3), Inches(0.38), size=13, bold=True,
+        add_textbox(sl, v, Inches(10.4), y + Inches(0.08),
+                    Inches(2.5), Inches(0.38), size=14, bold=True,
                     color=vc, align=PP_ALIGN.RIGHT)
 
-    slide_number(sl, 8)
     return sl
 
 
 def s09_finance(prs):
-    """資金計画"""
     sl = blank_slide(prs)
     bg(sl)
-    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
+    slide_header(sl, "FUNDING", "資金調達計画", 9)
 
-    add_textbox(sl, "FUNDING", Inches(0.6), Inches(0.4), Inches(5), Inches(0.5),
-                size=11, bold=True, color=C_ACCENT)
-    add_textbox(sl, "資金調達計画", Inches(0.6), Inches(0.75),
-                Inches(9), Inches(0.7), size=28, bold=True, color=C_WHITE)
-    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
-
-    # 調達サマリー
     funding = [
         ("代表 自己資金", "630万円", "90%持分（株式）"),
         ("友人 出資", "70万円", "10%持分（株式）"),
@@ -769,32 +585,29 @@ def s09_finance(prs):
         ("日本政策金融公庫", "500万円", "金利2%・7年返済"),
     ]
     add_textbox(sl, "調達構成",
-                Inches(0.6), Inches(1.75), Inches(5.5), Inches(0.4),
-                size=13, bold=True, color=C_ACCENT)
-    total = 0
+                Inches(0.65), Inches(1.85), Inches(5.8), Inches(0.45),
+                size=15, bold=True, color=C_ACCENT)
     for i, (name, amount, note) in enumerate(funding):
-        y = Inches(2.2 + i * 0.72)
-        add_rect(sl, Inches(0.5), y, Inches(5.8), Inches(0.65),
+        y = Inches(2.38 + i * 0.75)
+        add_rect(sl, Inches(0.55), y, Inches(6.1), Inches(0.68),
                  RGBColor(0x2A, 0x1E, 0x12))
-        add_textbox(sl, name, Inches(0.65), y + Inches(0.05),
-                    Inches(2.2), Inches(0.55), size=13, color=C_LIGHT)
-        add_textbox(sl, amount, Inches(2.8), y + Inches(0.05),
-                    Inches(1.5), Inches(0.55), size=16, bold=True, color=C_ACCENT)
-        add_textbox(sl, note, Inches(4.2), y + Inches(0.08),
-                    Inches(2.0), Inches(0.5), size=11, color=C_GRAY)
+        add_textbox(sl, name, Inches(0.7), y + Inches(0.08),
+                    Inches(2.3), Inches(0.55), size=15, color=C_LIGHT)
+        add_textbox(sl, amount, Inches(2.95), y + Inches(0.06),
+                    Inches(1.6), Inches(0.58), size=18, bold=True, color=C_ACCENT)
+        add_textbox(sl, note, Inches(4.45), y + Inches(0.1),
+                    Inches(2.1), Inches(0.52), size=13, color=C_GRAY)
 
-    # 合計
-    add_rect(sl, Inches(0.5), Inches(5.1), Inches(5.8), Inches(0.65),
+    add_rect(sl, Inches(0.55), Inches(5.4), Inches(6.1), Inches(0.72),
              RGBColor(0x3A, 0x2A, 0x08))
-    add_textbox(sl, "調達総額", Inches(0.65), Inches(5.17),
-                Inches(2.0), Inches(0.52), size=14, bold=True, color=C_WHITE)
-    add_textbox(sl, "2,630万円", Inches(2.8), Inches(5.17),
-                Inches(2.5), Inches(0.52), size=20, bold=True, color=C_ACCENT)
+    add_textbox(sl, "調達総額", Inches(0.7), Inches(5.5),
+                Inches(2.1), Inches(0.55), size=16, bold=True, color=C_WHITE)
+    add_textbox(sl, "2,630万円", Inches(2.95), Inches(5.46),
+                Inches(2.8), Inches(0.62), size=22, bold=True, color=C_ACCENT)
 
-    # 使途
     add_textbox(sl, "資金使途",
-                Inches(7.0), Inches(1.75), Inches(5.5), Inches(0.4),
-                size=13, bold=True, color=C_ACCENT)
+                Inches(7.2), Inches(1.85), Inches(5.8), Inches(0.45),
+                size=15, bold=True, color=C_ACCENT)
     uses = [
         ("物件取得費（保証金・礼金）", "350万円"),
         ("内装・設備工事", "870万円"),
@@ -803,39 +616,31 @@ def s09_finance(prs):
         ("採用・オープン前研修", "80万円"),
         ("マーケティング（3ヶ月分）", "45万円"),
         ("運転資金（3ヶ月分）", "405万円"),
-        ("🟡 手元残金（緊急予備）", "630万円"),
+        ("手元残金（緊急予備）", "630万円"),
     ]
     for i, (use, amt) in enumerate(uses):
-        y = Inches(2.2 + i * 0.57)
+        y = Inches(2.38 + i * 0.58)
         bg_c = RGBColor(0x3A, 0x2A, 0x08) if "手元" in use else RGBColor(0x2A, 0x1E, 0x12)
-        add_rect(sl, Inches(7.0), y, Inches(5.8), Inches(0.53), bg_c)
+        add_rect(sl, Inches(7.1), y, Inches(6.0), Inches(0.54), bg_c)
         col = C_ACCENT if "手元" in use else C_LIGHT
-        add_textbox(sl, use.replace("🟡 ", ""), Inches(7.15), y + Inches(0.07),
-                    Inches(3.8), Inches(0.4), size=12, color=col)
-        add_textbox(sl, amt, Inches(10.8), y + Inches(0.07),
-                    Inches(1.8), Inches(0.4), size=13, bold=True,
+        add_textbox(sl, use, Inches(7.25), y + Inches(0.08),
+                    Inches(3.9), Inches(0.4), size=14, color=col)
+        add_textbox(sl, amt, Inches(11.1), y + Inches(0.08),
+                    Inches(1.8), Inches(0.4), size=15, bold=True,
                     color=col, align=PP_ALIGN.RIGHT)
 
     add_textbox(sl,
                 "手元残金630万円は立ち上げ期の赤字（▲216万）を十分カバー。財務安全性は高い。",
-                Inches(0.5), Inches(7.0), Inches(12.3), Inches(0.35),
-                size=12, bold=True, color=C_ACCENT, align=PP_ALIGN.CENTER)
+                Inches(0.55), Inches(7.05), Inches(12.3), Inches(0.38),
+                size=14, bold=True, color=C_ACCENT, align=PP_ALIGN.CENTER)
 
-    slide_number(sl, 9)
     return sl
 
 
 def s10_roadmap(prs):
-    """展開ロードマップ"""
     sl = blank_slide(prs)
     bg(sl)
-    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
-
-    add_textbox(sl, "ROADMAP", Inches(0.6), Inches(0.4), Inches(5), Inches(0.5),
-                size=11, bold=True, color=C_ACCENT)
-    add_textbox(sl, "展開ロードマップ　7年で100店舗へ", Inches(0.6), Inches(0.75),
-                Inches(11), Inches(0.7), size=28, bold=True, color=C_WHITE)
-    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
+    slide_header(sl, "ROADMAP", "展開ロードマップ　7年で100店舗へ", 10)
 
     phases = [
         {
@@ -869,55 +674,43 @@ def s10_roadmap(prs):
     ]
 
     for i, p in enumerate(phases):
-        x = Inches(0.5 + i * 3.2)
-        # フェーズ帯
-        add_rect(sl, x, Inches(1.75), Inches(3.0), Inches(0.45), C_ACCENT)
+        x = Inches(0.55 + i * 3.2)
+        add_rect(sl, x, Inches(1.82), Inches(3.05), Inches(0.48), C_ACCENT)
         add_textbox(sl, f"{p['phase']}　{p['period']}",
-                    x + Inches(0.1), Inches(1.78), Inches(2.8), Inches(0.38),
-                    size=13, bold=True, color=C_BG)
-        # 店舗数
-        add_rect(sl, x, Inches(2.2), Inches(3.0), Inches(5.15),
+                    x + Inches(0.1), Inches(1.85), Inches(2.85), Inches(0.42),
+                    size=14, bold=True, color=C_BG)
+        add_rect(sl, x, Inches(2.3), Inches(3.05), Inches(5.1),
                  RGBColor(0x2A, 0x1E, 0x12))
         add_textbox(sl, p["stores"],
-                    x + Inches(0.1), Inches(2.3), Inches(2.8), Inches(0.6),
-                    size=26, bold=True, color=C_ACCENT if i == 3 else C_WHITE)
-        add_line(sl, x + Inches(0.1), Inches(3.0), Inches(2.7), color=C_ACCENT,
-                 height=Pt(0.8))
+                    x + Inches(0.12), Inches(2.4), Inches(2.85), Inches(0.65),
+                    size=28, bold=True, color=C_ACCENT if i == 3 else C_WHITE)
+        add_line(sl, x + Inches(0.12), Inches(3.12), Inches(2.78), color=C_ACCENT,
+                 height=Pt(1.0))
         add_textbox(sl, p["action"],
-                    x + Inches(0.1), Inches(3.1), Inches(2.8), Inches(2.3),
-                    size=11, color=C_LIGHT)
-        # KPI
-        add_rect(sl, x, Inches(5.35), Inches(3.0), Inches(0.8),
+                    x + Inches(0.12), Inches(3.25), Inches(2.85), Inches(2.2),
+                    size=13, color=C_LIGHT)
+        add_rect(sl, x, Inches(5.4), Inches(3.05), Inches(0.85),
                  RGBColor(0x1A, 0x12, 0x05))
         add_textbox(sl, "KPI: " + p["kpi"],
-                    x + Inches(0.1), Inches(5.4), Inches(2.8), Inches(0.68),
-                    size=11, color=C_ACCENT)
+                    x + Inches(0.12), Inches(5.45), Inches(2.85), Inches(0.72),
+                    size=13, color=C_ACCENT)
 
-    # 矢印（テキストで代用）
     for i in range(3):
-        add_textbox(sl, "→", Inches(3.3 + i * 3.2), Inches(3.8),
-                    Inches(0.25), Inches(0.4), size=20, color=C_ACCENT,
+        add_textbox(sl, "→", Inches(3.38 + i * 3.2), Inches(3.85),
+                    Inches(0.28), Inches(0.42), size=22, color=C_ACCENT,
                     align=PP_ALIGN.CENTER)
 
     add_textbox(sl, "FC展開により資本効率を最大化。オーナーのノウハウを型にして横展開する。",
-                Inches(0.5), Inches(7.0), Inches(12.3), Inches(0.35),
-                size=12, color=C_GRAY, align=PP_ALIGN.CENTER, italic=True)
+                Inches(0.55), Inches(7.05), Inches(12.3), Inches(0.38),
+                size=14, color=C_GRAY, align=PP_ALIGN.CENTER, italic=True)
 
-    slide_number(sl, 10)
     return sl
 
 
 def s11_strategy(prs):
-    """集客・マーケ戦略"""
     sl = blank_slide(prs)
     bg(sl)
-    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
-
-    add_textbox(sl, "MARKETING", Inches(0.6), Inches(0.4), Inches(5), Inches(0.5),
-                size=11, bold=True, color=C_ACCENT)
-    add_textbox(sl, "集客・マーケティング戦略", Inches(0.6), Inches(0.75),
-                Inches(10), Inches(0.7), size=28, bold=True, color=C_WHITE)
-    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
+    slide_header(sl, "MARKETING", "集客・マーケティング戦略", 11)
 
     strategies = [
         {
@@ -945,39 +738,30 @@ def s11_strategy(prs):
     for i, s in enumerate(strategies):
         col = i % 2
         row = i // 2
-        x = Inches(0.5 + col * 6.4)
-        y = Inches(1.75 + row * 2.65)
-        add_rect(sl, x, y, Inches(6.1), Inches(2.5), RGBColor(0x2A, 0x1E, 0x12))
-        add_textbox(sl, s["title"], x + Inches(0.15), y + Inches(0.1),
-                    Inches(5.8), Inches(0.4), size=15, bold=True, color=C_WHITE)
-        add_textbox(sl, s["ref"], x + Inches(0.15), y + Inches(0.52),
-                    Inches(5.8), Inches(0.3), size=11, color=C_ACCENT, italic=True)
-        add_line(sl, x + Inches(0.15), y + Inches(0.85), Inches(5.7),
+        x = Inches(0.55 + col * 6.45)
+        y = Inches(1.82 + row * 2.7)
+        add_rect(sl, x, y, Inches(6.2), Inches(2.55), RGBColor(0x2A, 0x1E, 0x12))
+        add_textbox(sl, s["title"], x + Inches(0.18), y + Inches(0.12),
+                    Inches(5.85), Inches(0.45), size=17, bold=True, color=C_WHITE)
+        add_textbox(sl, s["ref"], x + Inches(0.18), y + Inches(0.6),
+                    Inches(5.85), Inches(0.32), size=13, color=C_ACCENT, italic=True)
+        add_line(sl, x + Inches(0.18), y + Inches(0.97), Inches(5.8),
                  color=C_GRAY, height=Pt(0.5))
-        add_textbox(sl, s["body"], x + Inches(0.15), y + Inches(0.95),
-                    Inches(5.8), Inches(1.3), size=12, color=C_LIGHT)
+        add_textbox(sl, s["body"], x + Inches(0.18), y + Inches(1.08),
+                    Inches(5.85), Inches(1.35), size=14, color=C_LIGHT)
 
-    slide_number(sl, 11)
     return sl
 
 
 def s13_open_strategy(prs):
-    """オープン戦略"""
     sl = blank_slide(prs)
     bg(sl)
-    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
+    slide_header(sl, "LAUNCH STRATEGY", "オープン戦略　――　開業前から火をつける", 13)
 
-    add_textbox(sl, "LAUNCH STRATEGY", Inches(0.6), Inches(0.4), Inches(6), Inches(0.5),
-                size=11, bold=True, color=C_ACCENT)
-    add_textbox(sl, "オープン戦略　――　開業前から火をつける", Inches(0.6), Inches(0.75),
-                Inches(11), Inches(0.7), size=28, bold=True, color=C_WHITE)
-    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
-
-    # タイムライン
     timeline = [
         ("-6ヶ月", "仕込み期", [
             "物件契約・内装着工",
-            "Instagramアカウント開設（コンセプト発信開始）",
+            "Instagramアカウント開設（コンセプト発信）",
             "インフルエンサーリスト作成（50名以上）",
             "メニュー最終決定・レシピ標準化",
         ]),
@@ -1002,51 +786,39 @@ def s13_open_strategy(prs):
     ]
 
     for i, (time, phase, items) in enumerate(timeline):
-        x = Inches(0.4 + i * 3.22)
-        # 時期バッジ
+        x = Inches(0.45 + i * 3.22)
         bg_c = C_ACCENT if time == "OPEN" else RGBColor(0x3A, 0x2A, 0x08)
         txt_c = C_BG if time == "OPEN" else C_ACCENT
-        add_rect(sl, x, Inches(1.75), Inches(3.0), Inches(0.4), bg_c)
-        add_textbox(sl, time, x + Inches(0.05), Inches(1.78),
-                    Inches(2.9), Inches(0.34), size=14, bold=True,
+        add_rect(sl, x, Inches(1.82), Inches(3.05), Inches(0.44), bg_c)
+        add_textbox(sl, time, x + Inches(0.06), Inches(1.85),
+                    Inches(2.93), Inches(0.38), size=16, bold=True,
                     color=txt_c, align=PP_ALIGN.CENTER)
-        # フェーズ名
-        add_textbox(sl, phase, x + Inches(0.1), Inches(2.2),
-                    Inches(2.8), Inches(0.35), size=13, bold=True, color=C_WHITE)
-        # アクション
-        add_rect(sl, x, Inches(2.6), Inches(3.0), Inches(4.55),
+        add_textbox(sl, phase, x + Inches(0.12), Inches(2.32),
+                    Inches(2.85), Inches(0.4), size=15, bold=True, color=C_WHITE)
+        add_rect(sl, x, Inches(2.78), Inches(3.05), Inches(4.55),
                  RGBColor(0x2A, 0x1E, 0x12))
         for j, item in enumerate(items):
-            add_rect(sl, x + Inches(0.12), Inches(2.72 + j * 1.05),
-                     Inches(0.06), Inches(0.72), C_ACCENT)
-            add_textbox(sl, item, x + Inches(0.28), Inches(2.72 + j * 1.05),
-                        Inches(2.55), Inches(0.9), size=11, color=C_LIGHT)
+            add_rect(sl, x + Inches(0.14), Inches(2.9 + j * 1.05),
+                     Inches(0.07), Inches(0.74), C_ACCENT)
+            add_textbox(sl, item, x + Inches(0.3), Inches(2.9 + j * 1.05),
+                        Inches(2.6), Inches(0.9), size=13, color=C_LIGHT)
 
     add_textbox(sl,
                 "参考：ひまり商店（新橋）は開業前からのインフルエンサー戦略で初月1,700万円を達成",
-                Inches(0.5), Inches(7.1), Inches(12.3), Inches(0.3),
-                size=11, color=C_GRAY, align=PP_ALIGN.CENTER, italic=True)
+                Inches(0.55), Inches(7.1), Inches(12.3), Inches(0.3),
+                size=12, color=C_GRAY, align=PP_ALIGN.CENTER, italic=True)
 
-    slide_number(sl, 13)
     return sl
 
 
 def s14_fc_strategy(prs):
-    """FC展開戦略"""
     sl = blank_slide(prs)
     bg(sl)
-    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
+    slide_header(sl, "FC STRATEGY", "FC展開戦略　――　型をつくり、型で増やす", 14)
 
-    add_textbox(sl, "FC STRATEGY", Inches(0.6), Inches(0.4), Inches(6), Inches(0.5),
-                size=11, bold=True, color=C_ACCENT)
-    add_textbox(sl, "FC展開戦略　――　型をつくり、型で増やす", Inches(0.6), Inches(0.75),
-                Inches(11), Inches(0.7), size=28, bold=True, color=C_WHITE)
-    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
-
-    # 左：FC設計
     add_textbox(sl, "FCパッケージ設計（予定）",
-                Inches(0.6), Inches(1.75), Inches(5.5), Inches(0.4),
-                size=13, bold=True, color=C_ACCENT)
+                Inches(0.65), Inches(1.85), Inches(5.8), Inches(0.45),
+                size=15, bold=True, color=C_ACCENT)
 
     fc_items = [
         ("加盟金", "200万円", "ブランド使用権・初期研修込み"),
@@ -1057,64 +829,54 @@ def s14_fc_strategy(prs):
         ("FCオーナーの想定手残り", "月60〜90万円", "ロイヤリティ・返済後"),
     ]
     for i, (k, v, note) in enumerate(fc_items):
-        y = Inches(2.2 + i * 0.65)
+        y = Inches(2.38 + i * 0.67)
         bg_c = RGBColor(0x3A, 0x2A, 0x08) if "手残り" in k else RGBColor(0x2A, 0x1E, 0x12)
-        add_rect(sl, Inches(0.5), y, Inches(6.0), Inches(0.6), bg_c)
-        add_textbox(sl, k, Inches(0.65), y + Inches(0.1),
-                    Inches(2.5), Inches(0.42), size=12, color=C_GRAY)
+        add_rect(sl, Inches(0.55), y, Inches(6.1), Inches(0.62), bg_c)
+        add_textbox(sl, k, Inches(0.7), y + Inches(0.1),
+                    Inches(2.6), Inches(0.44), size=13, color=C_GRAY)
         vc = C_ACCENT if "手残り" in k else C_WHITE
-        add_textbox(sl, v, Inches(3.0), y + Inches(0.05),
-                    Inches(1.8), Inches(0.5), size=15, bold=True, color=vc)
-        add_textbox(sl, note, Inches(4.7), y + Inches(0.1),
-                    Inches(1.7), Inches(0.42), size=10, color=C_GRAY)
+        add_textbox(sl, v, Inches(3.15), y + Inches(0.06),
+                    Inches(1.85), Inches(0.52), size=16, bold=True, color=vc)
+        add_textbox(sl, note, Inches(4.85), y + Inches(0.1),
+                    Inches(1.7), Inches(0.44), size=11, color=C_GRAY)
 
-    # 右：FC募集ターゲットと強み
     add_textbox(sl, "FC加盟者ターゲット像",
-                Inches(7.2), Inches(1.75), Inches(5.5), Inches(0.4),
-                size=13, bold=True, color=C_ACCENT)
+                Inches(7.3), Inches(1.85), Inches(5.8), Inches(0.45),
+                size=15, bold=True, color=C_ACCENT)
     targets = [
         ("飲食経験者の独立志望者", "元料理人・飲食チェーン出身者。\n現場力があり、ブランドの型を活かせる。"),
         ("副業・投資目的の個人オーナー", "他業種からの参入。オーナー不在でも\n回るオペレーションを本部が支援。"),
         ("地方への展開パートナー", "東京モデルを地方に持ち込む\nエリアFCオーナー。複数店舗可。"),
     ]
     for i, (title, desc) in enumerate(targets):
-        y = Inches(2.2 + i * 1.5)
-        add_rect(sl, Inches(7.0), y, Inches(5.8), Inches(1.35),
+        y = Inches(2.38 + i * 1.52)
+        add_rect(sl, Inches(7.1), y, Inches(6.0), Inches(1.38),
                  RGBColor(0x2A, 0x1E, 0x12))
-        add_rect(sl, Inches(7.0), y, Inches(0.08), Inches(1.35), C_ACCENT)
-        add_textbox(sl, title, Inches(7.2), y + Inches(0.1),
-                    Inches(5.4), Inches(0.38), size=14, bold=True, color=C_WHITE)
-        add_textbox(sl, desc, Inches(7.2), y + Inches(0.52),
-                    Inches(5.4), Inches(0.7), size=12, color=C_LIGHT)
+        add_rect(sl, Inches(7.1), y, Inches(0.09), Inches(1.38), C_ACCENT)
+        add_textbox(sl, title, Inches(7.32), y + Inches(0.1),
+                    Inches(5.6), Inches(0.42), size=16, bold=True, color=C_WHITE)
+        add_textbox(sl, desc, Inches(7.32), y + Inches(0.57),
+                    Inches(5.6), Inches(0.72), size=14, color=C_LIGHT)
 
     add_textbox(sl, "FC本部収益（100店舗時）",
-                Inches(7.2), Inches(6.75), Inches(5.5), Inches(0.28),
-                size=12, bold=True, color=C_ACCENT)
+                Inches(7.3), Inches(6.88), Inches(5.8), Inches(0.3),
+                size=13, bold=True, color=C_ACCENT)
     add_textbox(sl,
                 "100店×720万×3%ロイヤリティ ＝ 月2,160万円 / 年2.6億円",
-                Inches(7.0), Inches(7.05), Inches(5.8), Inches(0.32),
-                size=12, color=C_WHITE)
+                Inches(7.1), Inches(7.15), Inches(6.0), Inches(0.3),
+                size=13, color=C_WHITE)
 
-    slide_number(sl, 14)
     return sl
 
 
 def s15_location(prs):
-    """立地・出店戦略"""
     sl = blank_slide(prs)
     bg(sl)
-    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
+    slide_header(sl, "LOCATION STRATEGY", "立地・出店戦略　――　勝てる場所を選ぶ", 15)
 
-    add_textbox(sl, "LOCATION STRATEGY", Inches(0.6), Inches(0.4), Inches(6), Inches(0.5),
-                size=11, bold=True, color=C_ACCENT)
-    add_textbox(sl, "立地・出店戦略　――　勝てる場所を選ぶ", Inches(0.6), Inches(0.75),
-                Inches(11), Inches(0.7), size=28, bold=True, color=C_WHITE)
-    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
-
-    # 立地スコアリング基準
     add_textbox(sl, "物件選定スコアリング基準",
-                Inches(0.6), Inches(1.75), Inches(5.5), Inches(0.4),
-                size=13, bold=True, color=C_ACCENT)
+                Inches(0.65), Inches(1.85), Inches(5.8), Inches(0.45),
+                size=15, bold=True, color=C_ACCENT)
 
     criteria = [
         ("乗降者数", "5万人/日以上", "◎"),
@@ -1125,22 +887,21 @@ def s15_location(prs):
         ("競合", "同業態が近くに集中していない", "△"),
     ]
     for i, (k, v, mark) in enumerate(criteria):
-        y = Inches(2.2 + i * 0.62)
-        add_rect(sl, Inches(0.5), y, Inches(6.0), Inches(0.58),
+        y = Inches(2.38 + i * 0.65)
+        add_rect(sl, Inches(0.55), y, Inches(6.1), Inches(0.6),
                  RGBColor(0x2A, 0x1E, 0x12))
-        add_textbox(sl, k, Inches(0.65), y + Inches(0.1),
-                    Inches(1.3), Inches(0.4), size=12, color=C_GRAY)
-        add_textbox(sl, v, Inches(1.9), y + Inches(0.1),
-                    Inches(3.2), Inches(0.4), size=12, color=C_WHITE)
+        add_textbox(sl, k, Inches(0.7), y + Inches(0.1),
+                    Inches(1.4), Inches(0.42), size=14, color=C_GRAY)
+        add_textbox(sl, v, Inches(2.0), y + Inches(0.1),
+                    Inches(3.3), Inches(0.42), size=14, color=C_WHITE)
         mc = C_ACCENT if mark == "◎" else C_GRAY
-        add_textbox(sl, mark, Inches(5.7), y + Inches(0.08),
-                    Inches(0.6), Inches(0.42), size=16, bold=True, color=mc,
+        add_textbox(sl, mark, Inches(5.8), y + Inches(0.08),
+                    Inches(0.65), Inches(0.44), size=18, bold=True, color=mc,
                     align=PP_ALIGN.CENTER)
 
-    # 右：エリア別分析
     add_textbox(sl, "優先出店エリア（1号店候補）",
-                Inches(7.2), Inches(1.75), Inches(5.5), Inches(0.4),
-                size=13, bold=True, color=C_ACCENT)
+                Inches(7.3), Inches(1.85), Inches(5.8), Inches(0.45),
+                size=15, bold=True, color=C_ACCENT)
 
     areas = [
         ("★ 三軒茶屋", "約10万人/日", "住宅街×夜の人通り◎\n飲食激戦区だが差別化余地大\n渋谷から2駅の好立地"),
@@ -1148,67 +909,57 @@ def s15_location(prs):
         ("★ 自由が丘", "約8万人/日",  "感度高い客層・SNS拡散◎\nカフェ・グルメ激戦区\nブランドイメージ向上に寄与"),
     ]
     for i, (name, riders, desc) in enumerate(areas):
-        y = Inches(2.2 + i * 1.6)
-        add_rect(sl, Inches(7.0), y, Inches(5.8), Inches(1.45),
+        y = Inches(2.38 + i * 1.62)
+        add_rect(sl, Inches(7.1), y, Inches(6.0), Inches(1.48),
                  RGBColor(0x2A, 0x1E, 0x12))
-        add_textbox(sl, name, Inches(7.15), y + Inches(0.08),
-                    Inches(2.2), Inches(0.4), size=16, bold=True, color=C_ACCENT)
-        add_textbox(sl, riders, Inches(9.3), y + Inches(0.1),
-                    Inches(2.0), Inches(0.36), size=13, color=C_WHITE,
+        add_textbox(sl, name, Inches(7.25), y + Inches(0.1),
+                    Inches(2.3), Inches(0.44), size=18, bold=True, color=C_ACCENT)
+        add_textbox(sl, riders, Inches(9.5), y + Inches(0.12),
+                    Inches(2.4), Inches(0.4), size=15, color=C_WHITE,
                     align=PP_ALIGN.RIGHT)
-        add_textbox(sl, desc, Inches(7.15), y + Inches(0.55),
-                    Inches(5.5), Inches(0.78), size=12, color=C_LIGHT)
+        add_textbox(sl, desc, Inches(7.25), y + Inches(0.6),
+                    Inches(5.7), Inches(0.8), size=14, color=C_LIGHT)
 
     add_textbox(sl,
                 "1号店は三軒茶屋〜目黒エリアで検討。居抜き物件を優先し初期投資を抑制する。",
-                Inches(0.5), Inches(7.1), Inches(12.3), Inches(0.3),
-                size=12, bold=True, color=C_ACCENT, align=PP_ALIGN.CENTER)
+                Inches(0.55), Inches(7.05), Inches(12.3), Inches(0.38),
+                size=14, bold=True, color=C_ACCENT, align=PP_ALIGN.CENTER)
 
-    slide_number(sl, 15)
     return sl
 
 
 def s16_brand_sns(prs):
-    """ブランド・SNS戦略"""
     sl = blank_slide(prs)
     bg(sl)
-    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
+    slide_header(sl, "BRAND & SNS", "ブランド・SNS戦略　――　「然」を育てる", 16)
 
-    add_textbox(sl, "BRAND & SNS", Inches(0.6), Inches(0.4), Inches(6), Inches(0.5),
-                size=11, bold=True, color=C_ACCENT)
-    add_textbox(sl, "ブランド・SNS戦略　――　「然」を育てる", Inches(0.6), Inches(0.75),
-                Inches(11), Inches(0.7), size=28, bold=True, color=C_WHITE)
-    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
-
-    # ブランド展開構造
     add_textbox(sl, "ブランドアーキテクチャ",
-                Inches(0.6), Inches(1.75), Inches(5.5), Inches(0.4),
-                size=13, bold=True, color=C_ACCENT)
+                Inches(0.65), Inches(1.85), Inches(5.8), Inches(0.45),
+                size=15, bold=True, color=C_ACCENT)
 
-    add_rect(sl, Inches(2.0), Inches(2.2), Inches(2.8), Inches(0.52), C_ACCENT)
-    add_textbox(sl, "然（ぜん）", Inches(2.0), Inches(2.23),
-                Inches(2.8), Inches(0.44), size=18, bold=True,
+    add_rect(sl, Inches(2.1), Inches(2.38), Inches(2.95), Inches(0.56), C_ACCENT)
+    add_textbox(sl, "然（ぜん）", Inches(2.1), Inches(2.41),
+                Inches(2.95), Inches(0.48), size=20, bold=True,
                 color=C_BG, align=PP_ALIGN.CENTER)
 
     branches = [
-        ("肉酒場 然", "1号店〜\n糀漬け肉×石板焼き", Inches(0.3)),
-        ("魚酒場 然", "2年目〜\n魚介×発酵", Inches(2.5)),
-        ("鶏酒場 然", "3年目〜\nやきとり×糀", Inches(4.7)),
+        ("肉酒場 然", "1号店〜\n糀漬け肉×石板焼き", Inches(0.4)),
+        ("魚酒場 然", "2年目〜\n魚介×発酵", Inches(2.6)),
+        ("鶏酒場 然", "3年目〜\nやきとり×糀", Inches(4.8)),
     ]
     for name, desc, x in branches:
-        add_rect(sl, x, Inches(3.35), Inches(2.0), Inches(0.42),
+        add_rect(sl, x, Inches(3.55), Inches(2.05), Inches(0.46),
                  RGBColor(0x3A, 0x2A, 0x08))
-        add_textbox(sl, name, x + Inches(0.05), Inches(3.38),
-                    Inches(1.9), Inches(0.36), size=13, bold=True,
+        add_textbox(sl, name, x + Inches(0.06), Inches(3.58),
+                    Inches(1.93), Inches(0.4), size=14, bold=True,
                     color=C_ACCENT, align=PP_ALIGN.CENTER)
-        add_textbox(sl, desc, x + Inches(0.05), Inches(3.82),
-                    Inches(1.9), Inches(0.55), size=10, color=C_GRAY,
+        add_textbox(sl, desc, x + Inches(0.06), Inches(4.08),
+                    Inches(1.93), Inches(0.58), size=12, color=C_GRAY,
                     align=PP_ALIGN.CENTER)
 
-    # SEO/MEO/AIO
     add_textbox(sl, "SEO / MEO / AIO設計",
-                Inches(0.6), Inches(4.55), Inches(5.5), Inches(0.4),
-                size=13, bold=True, color=C_ACCENT)
+                Inches(0.65), Inches(4.82), Inches(5.8), Inches(0.45),
+                size=15, bold=True, color=C_ACCENT)
     seo_items = [
         ("SEO", "「肉酒場」「糀漬け定食」＋エリア名でコンテンツ設計"),
         ("MEO", "Googleマップ説明に「糀漬け肉定食居酒屋」を明記。写真・口コミを週次更新"),
@@ -1216,18 +967,17 @@ def s16_brand_sns(prs):
         ("指名", "「然（ぜん）」を固有名詞として育て、リピーター指名検索を増やす"),
     ]
     for i, (tag, desc) in enumerate(seo_items):
-        y = Inches(5.0 + i * 0.46)
-        add_rect(sl, Inches(0.5), y, Inches(0.55), Inches(0.38), C_ACCENT)
-        add_textbox(sl, tag, Inches(0.5), y + Inches(0.02),
-                    Inches(0.55), Inches(0.34), size=10, bold=True,
+        y = Inches(5.35 + i * 0.48)
+        add_rect(sl, Inches(0.55), y, Inches(0.58), Inches(0.4), C_ACCENT)
+        add_textbox(sl, tag, Inches(0.55), y + Inches(0.02),
+                    Inches(0.58), Inches(0.36), size=11, bold=True,
                     color=C_BG, align=PP_ALIGN.CENTER)
-        add_textbox(sl, desc, Inches(1.15), y,
-                    Inches(5.2), Inches(0.4), size=11, color=C_LIGHT)
+        add_textbox(sl, desc, Inches(1.22), y,
+                    Inches(5.3), Inches(0.42), size=13, color=C_LIGHT)
 
-    # 右：SNSコンテンツ設計
     add_textbox(sl, "SNSコンテンツ設計（Instagram）",
-                Inches(7.2), Inches(1.75), Inches(5.5), Inches(0.4),
-                size=13, bold=True, color=C_ACCENT)
+                Inches(7.3), Inches(1.85), Inches(5.8), Inches(0.45),
+                size=15, bold=True, color=C_ACCENT)
 
     contents = [
         ("体験動画（リール）", "石板の煙・音・肉の断面。\n「見ていて気持ちいい」が拡散の鍵。", "週3本"),
@@ -1236,38 +986,30 @@ def s16_brand_sns(prs):
         ("オーナーの想い発信", "開業ストーリー・日々の学び。\n「この人から買いたい」を育てる。", "週1本"),
     ]
     for i, (title, body, freq) in enumerate(contents):
-        y = Inches(2.2 + i * 1.22)
-        add_rect(sl, Inches(7.0), y, Inches(5.8), Inches(1.1),
+        y = Inches(2.38 + i * 1.24)
+        add_rect(sl, Inches(7.1), y, Inches(6.0), Inches(1.14),
                  RGBColor(0x2A, 0x1E, 0x12))
-        add_textbox(sl, title, Inches(7.15), y + Inches(0.05),
-                    Inches(3.8), Inches(0.36), size=13, bold=True, color=C_WHITE)
-        add_rect(sl, Inches(11.3), y + Inches(0.08), Inches(1.3), Inches(0.3),
+        add_textbox(sl, title, Inches(7.25), y + Inches(0.07),
+                    Inches(3.9), Inches(0.4), size=15, bold=True, color=C_WHITE)
+        add_rect(sl, Inches(11.4), y + Inches(0.1), Inches(1.4), Inches(0.32),
                  RGBColor(0x3A, 0x2A, 0x08))
-        add_textbox(sl, freq, Inches(11.3), y + Inches(0.08),
-                    Inches(1.3), Inches(0.3), size=10, color=C_ACCENT,
+        add_textbox(sl, freq, Inches(11.4), y + Inches(0.1),
+                    Inches(1.4), Inches(0.32), size=11, color=C_ACCENT,
                     align=PP_ALIGN.CENTER)
-        add_textbox(sl, body, Inches(7.15), y + Inches(0.45),
-                    Inches(5.5), Inches(0.55), size=11, color=C_LIGHT)
+        add_textbox(sl, body, Inches(7.25), y + Inches(0.5),
+                    Inches(5.7), Inches(0.57), size=13, color=C_LIGHT)
 
-    slide_number(sl, 16)
     return sl
 
 
 def s17_operations(prs):
-    """オペレーション・仕込みシステム"""
     sl = blank_slide(prs)
     bg(sl)
-    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
-
-    add_textbox(sl, "OPERATIONS", Inches(0.6), Inches(0.4), Inches(6), Inches(0.5),
-                size=11, bold=True, color=C_ACCENT)
-    add_textbox(sl, "オペレーション設計　――　型が利益を生む", Inches(0.6), Inches(0.75),
-                Inches(11), Inches(0.7), size=28, bold=True, color=C_WHITE)
-    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
+    slide_header(sl, "OPERATIONS", "オペレーション設計　――　型が利益を生む", 17)
 
     add_textbox(sl, "仕込みフロー（前日→当日）",
-                Inches(0.6), Inches(1.75), Inches(5.5), Inches(0.4),
-                size=13, bold=True, color=C_ACCENT)
+                Inches(0.65), Inches(1.85), Inches(5.8), Inches(0.45),
+                size=15, bold=True, color=C_ACCENT)
 
     steps = [
         ("前日 15:00", "サガリ・豚・鶏を糀に漬け込み（各48h）"),
@@ -1279,18 +1021,17 @@ def s17_operations(prs):
         ("22:30", "閉店・翌日仕込み開始"),
     ]
     for i, (time, action) in enumerate(steps):
-        y = Inches(2.2 + i * 0.57)
-        add_rect(sl, Inches(0.5), y, Inches(6.0), Inches(0.53),
+        y = Inches(2.38 + i * 0.6)
+        add_rect(sl, Inches(0.55), y, Inches(6.1), Inches(0.56),
                  RGBColor(0x2A, 0x1E, 0x12) if i % 2 == 0 else RGBColor(0x22, 0x18, 0x0E))
-        add_textbox(sl, time, Inches(0.65), y + Inches(0.08),
-                    Inches(1.3), Inches(0.38), size=11, bold=True, color=C_ACCENT)
-        add_textbox(sl, action, Inches(2.0), y + Inches(0.08),
-                    Inches(4.3), Inches(0.38), size=12, color=C_WHITE)
+        add_textbox(sl, time, Inches(0.7), y + Inches(0.1),
+                    Inches(1.35), Inches(0.4), size=13, bold=True, color=C_ACCENT)
+        add_textbox(sl, action, Inches(2.1), y + Inches(0.1),
+                    Inches(4.4), Inches(0.4), size=14, color=C_WHITE)
 
-    # 右：FC再現性の3本柱
     add_textbox(sl, "FC展開を可能にする3つの仕組み",
-                Inches(7.2), Inches(1.75), Inches(5.5), Inches(0.4),
-                size=13, bold=True, color=C_ACCENT)
+                Inches(7.3), Inches(1.85), Inches(5.8), Inches(0.45),
+                size=15, bold=True, color=C_ACCENT)
 
     pillars = [
         ("① 低温調理×前日仕込み",
@@ -1301,40 +1042,31 @@ def s17_operations(prs):
          "仕込み温度・時間・グラム数を\n全てマニュアル化。SVが巡回研修で\n品質を均一化する体制を構築。"),
     ]
     for i, (title, body) in enumerate(pillars):
-        y = Inches(2.2 + i * 1.6)
-        add_rect(sl, Inches(7.0), y, Inches(5.8), Inches(1.45),
+        y = Inches(2.38 + i * 1.62)
+        add_rect(sl, Inches(7.1), y, Inches(6.0), Inches(1.48),
                  RGBColor(0x2A, 0x1E, 0x12))
-        add_rect(sl, Inches(7.0), y, Inches(0.08), Inches(1.45), C_ACCENT)
-        add_textbox(sl, title, Inches(7.2), y + Inches(0.08),
-                    Inches(5.4), Inches(0.4), size=14, bold=True, color=C_WHITE)
-        add_textbox(sl, body, Inches(7.2), y + Inches(0.55),
-                    Inches(5.4), Inches(0.78), size=12, color=C_LIGHT)
+        add_rect(sl, Inches(7.1), y, Inches(0.09), Inches(1.48), C_ACCENT)
+        add_textbox(sl, title, Inches(7.32), y + Inches(0.1),
+                    Inches(5.6), Inches(0.44), size=16, bold=True, color=C_WHITE)
+        add_textbox(sl, body, Inches(7.32), y + Inches(0.6),
+                    Inches(5.6), Inches(0.8), size=14, color=C_LIGHT)
 
     add_textbox(sl,
                 "「低温調理×石板仕上げ」は職人不要のオペレーションを実現し、FC展開の最大の武器になる。",
-                Inches(0.5), Inches(7.1), Inches(12.3), Inches(0.3),
-                size=12, bold=True, color=C_ACCENT, align=PP_ALIGN.CENTER)
+                Inches(0.55), Inches(7.05), Inches(12.3), Inches(0.38),
+                size=14, bold=True, color=C_ACCENT, align=PP_ALIGN.CENTER)
 
-    slide_number(sl, 17)
     return sl
 
 
 def s18_data_kpi(prs):
-    """データ経営・KPI管理"""
     sl = blank_slide(prs)
     bg(sl)
-    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
+    slide_header(sl, "DATA MANAGEMENT", "データ経営　――　感覚ではなく数字で動く", 18)
 
-    add_textbox(sl, "DATA MANAGEMENT", Inches(0.6), Inches(0.4), Inches(6), Inches(0.5),
-                size=11, bold=True, color=C_ACCENT)
-    add_textbox(sl, "データ経営　――　感覚ではなく数字で動く", Inches(0.6), Inches(0.75),
-                Inches(11), Inches(0.7), size=28, bold=True, color=C_WHITE)
-    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
-
-    # KPI管理サイクル
     add_textbox(sl, "KPI管理サイクル",
-                Inches(0.6), Inches(1.75), Inches(5.5), Inches(0.4),
-                size=13, bold=True, color=C_ACCENT)
+                Inches(0.65), Inches(1.85), Inches(5.8), Inches(0.45),
+                size=15, bold=True, color=C_ACCENT)
 
     cycles = [
         ("日次", [
@@ -1357,20 +1089,19 @@ def s18_data_kpi(prs):
         ]),
     ]
     for i, (freq, items) in enumerate(cycles):
-        x = Inches(0.5 + i * 2.2)
-        add_rect(sl, x, Inches(2.2), Inches(2.0), Inches(0.4), C_ACCENT)
-        add_textbox(sl, freq, x, Inches(2.23), Inches(2.0), Inches(0.34),
-                    size=13, bold=True, color=C_BG, align=PP_ALIGN.CENTER)
-        add_rect(sl, x, Inches(2.6), Inches(2.0), Inches(3.0),
+        x = Inches(0.55 + i * 2.25)
+        add_rect(sl, x, Inches(2.38), Inches(2.05), Inches(0.44), C_ACCENT)
+        add_textbox(sl, freq, x, Inches(2.41), Inches(2.05), Inches(0.38),
+                    size=15, bold=True, color=C_BG, align=PP_ALIGN.CENTER)
+        add_rect(sl, x, Inches(2.82), Inches(2.05), Inches(3.15),
                  RGBColor(0x2A, 0x1E, 0x12))
         for j, item in enumerate(items):
-            add_textbox(sl, f"• {item}", x + Inches(0.1), Inches(2.72 + j * 0.65),
-                        Inches(1.8), Inches(0.58), size=11, color=C_LIGHT)
+            add_textbox(sl, f"• {item}", x + Inches(0.12), Inches(2.96 + j * 0.7),
+                        Inches(1.85), Inches(0.62), size=13, color=C_LIGHT)
 
-    # 右：重要KPI目標値
     add_textbox(sl, "重要KPI目標値（1号店・安定期）",
-                Inches(7.2), Inches(1.75), Inches(5.5), Inches(0.4),
-                size=13, bold=True, color=C_ACCENT)
+                Inches(7.3), Inches(1.85), Inches(5.8), Inches(0.45),
+                size=15, bold=True, color=C_ACCENT)
 
     kpis = [
         ("月商目標", "720万円", "安定期"),
@@ -1385,37 +1116,65 @@ def s18_data_kpi(prs):
         ("Instagram フォロワー", "1万人（1年目）", "SNS資産"),
     ]
     for i, (k, v, note) in enumerate(kpis):
-        y = Inches(2.2 + i * 0.48)
+        y = Inches(2.38 + i * 0.49)
         bg_c = RGBColor(0x3A, 0x2A, 0x08) if i % 2 == 0 else RGBColor(0x2A, 0x1E, 0x12)
-        add_rect(sl, Inches(7.0), y, Inches(5.8), Inches(0.45), bg_c)
-        add_textbox(sl, k, Inches(7.15), y + Inches(0.05),
-                    Inches(2.5), Inches(0.36), size=11, color=C_GRAY)
-        add_textbox(sl, v, Inches(9.5), y + Inches(0.03),
-                    Inches(1.8), Inches(0.38), size=13, bold=True, color=C_WHITE)
-        add_textbox(sl, note, Inches(11.2), y + Inches(0.07),
-                    Inches(1.4), Inches(0.34), size=10, color=C_GRAY,
+        add_rect(sl, Inches(7.1), y, Inches(6.0), Inches(0.46), bg_c)
+        add_textbox(sl, k, Inches(7.25), y + Inches(0.05),
+                    Inches(2.6), Inches(0.38), size=13, color=C_GRAY)
+        add_textbox(sl, v, Inches(9.75), y + Inches(0.04),
+                    Inches(1.8), Inches(0.4), size=14, bold=True, color=C_WHITE)
+        add_textbox(sl, note, Inches(11.45), y + Inches(0.07),
+                    Inches(1.45), Inches(0.35), size=11, color=C_GRAY,
                     align=PP_ALIGN.RIGHT)
 
     add_textbox(sl,
                 "参考：つむぎ堂は毎日注文数・売上をスタッフと共有するデータ経営で坪月商57万円を実現",
-                Inches(0.5), Inches(7.1), Inches(12.3), Inches(0.3),
-                size=11, color=C_GRAY, align=PP_ALIGN.CENTER, italic=True)
+                Inches(0.55), Inches(7.1), Inches(12.3), Inches(0.3),
+                size=12, color=C_GRAY, align=PP_ALIGN.CENTER, italic=True)
 
-    slide_number(sl, 18)
+    return sl
+
+
+def s_growth_chart(prs, slide_num):
+    """成長・財務チャートスライド（グラフ2本: 年商＋営業利益）"""
+    sl = blank_slide(prs)
+    bg(sl)
+    slide_header(sl, "10-YEAR GROWTH", "10年財務成長シナリオ", slide_num)
+
+    # サマリーKPI（4ボックス）
+    kpis = [
+        ("7年目 店舗数",   "100店舗"),
+        ("7年目 年商",     "86億円"),
+        ("7年目 営業利益", "約13億円"),
+        ("10年目 年商",    "138億円"),
+    ]
+    for i, (label, val) in enumerate(kpis):
+        x = Inches(0.55 + i * 3.2)
+        add_rect(sl, x, Inches(1.82), Inches(3.05), Inches(0.92),
+                 RGBColor(0x3A, 0x2A, 0x08))
+        add_textbox(sl, label, x + Inches(0.12), Inches(1.88),
+                    Inches(2.85), Inches(0.32), size=12, color=C_GRAY,
+                    align=PP_ALIGN.CENTER)
+        add_textbox(sl, val, x + Inches(0.12), Inches(2.2),
+                    Inches(2.85), Inches(0.5), size=22, bold=True,
+                    color=C_ACCENT, align=PP_ALIGN.CENTER)
+
+    # グラフ2枚を横並び（大サイズ）
+    charts = [
+        (make_revenue_chart, Inches(0.45),  Inches(2.9), Inches(6.2), Inches(4.45)),
+        (make_profit_chart,  Inches(6.85),  Inches(2.9), Inches(6.2), Inches(4.45)),
+    ]
+    for fn, left, top, w, h in charts:
+        img_buf = fn()
+        sl.shapes.add_picture(img_buf, left, top, w, h)
+
     return sl
 
 
 def s19_risk(prs):
-    """リスクと対策"""
     sl = blank_slide(prs)
     bg(sl)
-    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
-
-    add_textbox(sl, "RISK MANAGEMENT", Inches(0.6), Inches(0.4), Inches(6), Inches(0.5),
-                size=11, bold=True, color=C_ACCENT)
-    add_textbox(sl, "リスクと対策　――　想定して備える", Inches(0.6), Inches(0.75),
-                Inches(11), Inches(0.7), size=28, bold=True, color=C_WHITE)
-    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
+    slide_header(sl, "RISK MANAGEMENT", "リスクと対策　――　想定して備える", 20)
 
     risks = [
         {
@@ -1456,44 +1215,32 @@ def s19_risk(prs):
     ]
 
     for i, r in enumerate(risks):
-        y = Inches(1.75 + i * 1.02)
-        add_rect(sl, Inches(0.5), y, Inches(12.3), Inches(0.94),
+        y = Inches(1.82 + i * 1.03)
+        add_rect(sl, Inches(0.55), y, Inches(12.3), Inches(0.96),
                  RGBColor(0x2A, 0x1E, 0x12))
-        # レベルバッジ
-        add_rect(sl, Inches(0.5), y, Inches(0.5), Inches(0.94), r["level_c"])
-        add_textbox(sl, r["level"], Inches(0.5), y + Inches(0.28),
-                    Inches(0.5), Inches(0.36), size=11, bold=True,
+        add_rect(sl, Inches(0.55), y, Inches(0.52), Inches(0.96), r["level_c"])
+        add_textbox(sl, r["level"], Inches(0.55), y + Inches(0.3),
+                    Inches(0.52), Inches(0.38), size=13, bold=True,
                     color=C_BG, align=PP_ALIGN.CENTER)
-        # リスク名
-        add_textbox(sl, r["risk"], Inches(1.1), y + Inches(0.05),
-                    Inches(3.0), Inches(0.38), size=13, bold=True, color=C_WHITE)
-        # 原因
-        add_textbox(sl, r["cause"], Inches(1.1), y + Inches(0.48),
-                    Inches(3.0), Inches(0.38), size=11, color=C_GRAY, italic=True)
-        # 対策
-        add_rect(sl, Inches(4.3), y + Inches(0.08), Inches(0.5), Inches(0.28),
+        add_textbox(sl, r["risk"], Inches(1.18), y + Inches(0.06),
+                    Inches(3.1), Inches(0.42), size=15, bold=True, color=C_WHITE)
+        add_textbox(sl, r["cause"], Inches(1.18), y + Inches(0.52),
+                    Inches(3.1), Inches(0.38), size=13, color=C_GRAY, italic=True)
+        add_rect(sl, Inches(4.45), y + Inches(0.1), Inches(0.52), Inches(0.3),
                  C_ACCENT)
-        add_textbox(sl, "対策", Inches(4.3), y + Inches(0.08),
-                    Inches(0.5), Inches(0.28), size=9, bold=True,
+        add_textbox(sl, "対策", Inches(4.45), y + Inches(0.1),
+                    Inches(0.52), Inches(0.3), size=10, bold=True,
                     color=C_BG, align=PP_ALIGN.CENTER)
-        add_textbox(sl, r["action"], Inches(4.9), y + Inches(0.05),
-                    Inches(7.7), Inches(0.84), size=11, color=C_LIGHT)
+        add_textbox(sl, r["action"], Inches(5.06), y + Inches(0.06),
+                    Inches(7.6), Inches(0.86), size=13, color=C_LIGHT)
 
-    slide_number(sl, 19)
     return sl
 
 
 def s20_action_plan(prs):
-    """今後90日のアクションプラン"""
     sl = blank_slide(prs)
     bg(sl)
-    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
-
-    add_textbox(sl, "ACTION PLAN", Inches(0.6), Inches(0.4), Inches(6), Inches(0.5),
-                size=11, bold=True, color=C_ACCENT)
-    add_textbox(sl, "今後90日のアクションプラン", Inches(0.6), Inches(0.75),
-                Inches(11), Inches(0.7), size=28, bold=True, color=C_WHITE)
-    add_line(sl, Inches(0.6), Inches(1.55), Inches(11.5))
+    slide_header(sl, "ACTION PLAN", "今後90日のアクションプラン", 21)
 
     phases_90 = [
         {
@@ -1535,58 +1282,54 @@ def s20_action_plan(prs):
     ]
 
     for i, p in enumerate(phases_90):
-        x = Inches(0.5 + i * 4.25)
-        add_rect(sl, x, Inches(1.75), Inches(4.0), Inches(0.42), p["color"])
+        x = Inches(0.55 + i * 4.25)
+        add_rect(sl, x, Inches(1.82), Inches(4.1), Inches(0.46), p["color"])
         add_textbox(sl, p["period"],
-                    x + Inches(0.1), Inches(1.78), Inches(1.5), Inches(0.36),
-                    size=12, bold=True, color=C_ACCENT)
+                    x + Inches(0.12), Inches(1.85), Inches(1.6), Inches(0.4),
+                    size=14, bold=True, color=C_ACCENT)
         add_textbox(sl, p["theme"],
-                    x + Inches(1.6), Inches(1.78), Inches(2.2), Inches(0.36),
-                    size=11, color=C_WHITE)
-        add_rect(sl, x, Inches(2.17), Inches(4.0), Inches(4.6),
+                    x + Inches(1.7), Inches(1.85), Inches(2.3), Inches(0.4),
+                    size=13, color=C_WHITE)
+        add_rect(sl, x, Inches(2.28), Inches(4.1), Inches(4.7),
                  RGBColor(0x2A, 0x1E, 0x12))
         for j, item in enumerate(p["items"]):
             add_textbox(sl, item,
-                        x + Inches(0.15), Inches(2.28 + j * 0.84),
-                        Inches(3.7), Inches(0.76), size=12, color=C_LIGHT)
+                        x + Inches(0.18), Inches(2.4 + j * 0.86),
+                        Inches(3.78), Inches(0.78), size=14, color=C_LIGHT)
 
-    # 最終ゴール
-    add_rect(sl, Inches(0.5), Inches(7.0), Inches(12.3), Inches(0.38),
+    add_rect(sl, Inches(0.55), Inches(7.05), Inches(12.3), Inches(0.4),
              RGBColor(0x3A, 0x2A, 0x08))
     add_textbox(sl,
                 "90日後のゴール：物件契約完了・融資確定・SNS認知スタート　→　開業へ",
-                Inches(0.5), Inches(7.03), Inches(12.3), Inches(0.32),
-                size=13, bold=True, color=C_ACCENT, align=PP_ALIGN.CENTER)
+                Inches(0.55), Inches(7.07), Inches(12.3), Inches(0.36),
+                size=15, bold=True, color=C_ACCENT, align=PP_ALIGN.CENTER)
 
-    slide_number(sl, 20)
     return sl
 
 
 def s12_closing(prs):
-    """クロージング"""
     sl = blank_slide(prs)
     bg(sl)
-    add_rect(sl, 0, 0, Inches(0.25), SLIDE_H, C_ACCENT)
+    add_rect(sl, 0, 0, Inches(0.3), SLIDE_H, C_ACCENT)
 
-    # 大きな然
-    add_textbox(sl, "然", Inches(7.5), Inches(0.2), Inches(5.5), Inches(6.5),
-                size=280, bold=True, color=RGBColor(0x2A, 0x1E, 0x12),
+    add_textbox(sl, "然", Inches(7.5), Inches(0.1), Inches(5.6), Inches(7.0),
+                size=300, bold=True, color=RGBColor(0x2A, 0x1E, 0x12),
                 align=PP_ALIGN.CENTER)
 
     add_textbox(sl, "私たちが目指す未来",
-                Inches(0.8), Inches(1.2), Inches(6.5), Inches(0.6),
-                size=16, bold=True, color=C_ACCENT)
-    add_line(sl, Inches(0.8), Inches(1.85), Inches(5.5))
+                Inches(0.9), Inches(1.1), Inches(6.8), Inches(0.65),
+                size=18, bold=True, color=C_ACCENT)
+    add_line(sl, Inches(0.9), Inches(1.82), Inches(5.7))
 
     add_textbox(sl,
                 "糀漬け肉の定食と、和の一杯。",
-                Inches(0.8), Inches(2.0), Inches(7.0), Inches(0.7),
-                size=26, bold=True, color=C_WHITE)
+                Inches(0.9), Inches(1.98), Inches(7.2), Inches(0.78),
+                size=28, bold=True, color=C_WHITE)
 
     add_textbox(sl,
                 "日本全国に「然」の灯りを。\n7年で100店舗。\n発酵と肉で、新しい定番をつくる。",
-                Inches(0.8), Inches(2.9), Inches(6.5), Inches(1.6),
-                size=20, color=C_LIGHT)
+                Inches(0.9), Inches(2.9), Inches(6.8), Inches(1.7),
+                size=22, color=C_LIGHT)
 
     add_textbox(sl,
                 "肉酒場 然は、単なる飲食店ではありません。\n"
@@ -1594,10 +1337,10 @@ def s12_closing(prs):
                 "という本質的なニーズを結びつけた、新しいブランドです。\n\n"
                 "直営で型をつくり、FCで全国へ。\n"
                 "その先には、日本の食文化に残る一皿があります。",
-                Inches(0.8), Inches(4.7), Inches(6.5), Inches(2.0),
-                size=13, color=C_GRAY, italic=True)
+                Inches(0.9), Inches(4.75), Inches(6.8), Inches(2.1),
+                size=15, color=C_GRAY, italic=True)
 
-    slide_number(sl, 19)  # closingは最後のスライド
+    slide_number(sl, 21)
     return sl
 
 
@@ -1629,7 +1372,7 @@ def main():
     os.makedirs("reports", exist_ok=True)
     out = f"reports/肉酒場然_事業計画書_{datetime.now().strftime('%Y%m%d')}.pptx"
     prs.save(out)
-    print(f"✅ 保存完了: {out}")
+    print(f"保存完了: {out}")
 
 
 if __name__ == "__main__":
