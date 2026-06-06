@@ -48,7 +48,7 @@ YEARS  = list(range(1, 11))
 
 # 【肉酒場 然】年商（億円）
 ZEN_REV   = [0.4, 1.7, 4.3, 13.0, 25.9, 56.2, 86.4, 103.7, 120.9, 138.2]
-# 【新業態（1人OPブランド）】Year4〜展開
+# 【蕎麦 然（立ち食い蕎麦）】Year4〜展開
 NEW_REV   = [0.0, 0.0, 0.0,  0.5,  2.5,  6.0, 12.0,  22.0,  38.0,  55.0]
 # 【SNS事業部（コンサル＋クリエイティブ）】Year3〜展開
 CON_REV   = [0.0, 0.0, 0.5,  1.2,  2.0,  3.0,  4.5,   6.5,   9.0,  12.0]
@@ -220,7 +220,7 @@ def make_revenue_chart():
     x = np.arange(len(YEARS))
     w = 0.65
     b1 = ax.bar(x, ZEN_REV, width=w, color=ACC_HEX,      label="肉酒場 然",       zorder=3)
-    b2 = ax.bar(x, NEW_REV, width=w, color="#7A5C2C",     label="新業態ブランド",   zorder=3,
+    b2 = ax.bar(x, NEW_REV, width=w, color="#7A5C2C",     label="蕎麦 然（立ち食い）",   zorder=3,
                 bottom=ZEN_REV)
     b3 = ax.bar(x, CON_REV, width=w, color=GRN_HEX,      label="コンサル事業",     zorder=3,
                 bottom=[z+n for z,n in zip(ZEN_REV, NEW_REV)])
@@ -1455,12 +1455,12 @@ def s_group_strategy(prs, slide_num):
         },
         {
             "no": "02",
-            "name": "新業態ブランド",
-            "tag": "1人OP特化　Year4〜（構想中）",
+            "name": "蕎麦 然",
+            "tag": "立ち食い蕎麦FC　Year4〜",
             "icon": "🍜",
-            "desc": "1人〜2人で完結する小型FC業態。\nジャンル・コンセプトは現在設計中。\n然ブランドの運営ノウハウを凝縮し\n低投資・高回転モデルで展開予定。",
-            "y7": "年商 12億円",
-            "kpi": "50店舗 / FC特化 / 低コスト出店",
+            "desc": "然の発酵だし×立ち食い蕎麦の\n小型FC業態。5〜10坪・1人OP。\n低投資・昼の高回転モデルで\n月商150万円を設計。",
+            "y7": "年商 12億円（約80店舗）",
+            "kpi": "5〜10坪 / 1人OP / 初期投資500万以下",
         },
         {
             "no": "03",
@@ -1511,7 +1511,7 @@ def s_group_strategy(prs, slide_num):
     add_textbox(sl, f"約{y7_total:.0f}億円",
                 Inches(4.5), Inches(6.25), Inches(4.0), Inches(0.5),
                 size=28, bold=True, color=C_ACCENT)
-    add_textbox(sl, "（然86億 ＋ 新業態12億 ＋ コンサル2.5億）",
+    add_textbox(sl, "（然86億 ＋ 蕎麦 然12億 ＋ SNS事業部4.5億）",
                 Inches(8.3), Inches(6.33), Inches(4.3), Inches(0.38),
                 size=13, color=C_GRAY)
 
