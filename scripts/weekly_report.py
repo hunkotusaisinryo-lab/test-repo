@@ -23,11 +23,27 @@ COLOR_LIGHT = RGBColor(0xCC, 0xCC, 0xCC)      # ライトグレー
 COLOR_SECTION = RGBColor(0x2D, 0x2D, 0x44)    # セクション背景
 
 
-def get_last_week_dates():
-    """前週（月〜日）の日付リストを返す"""
+def get_last_week_dates(research_dir="research"):
+    """前週（月〜日）の日付リストを返す。前週にファイルがなければ直近7日分にフォールバック"""
     today = datetime.date.today()
     last_monday = today - datetime.timedelta(days=today.weekday() + 7)
-    return [last_monday + datetime.timedelta(days=i) for i in range(7)]
+    last_week = [last_monday + datetime.timedelta(days=i) for i in range(7)]
+
+    # 前週にファイルが存在するか確認
+    research_path = Path(research_dir)
+    if any((research_path / f"{d}.md").exists() for d in last_week):
+        return last_week
+
+    # フォールバック: 直近14日以内の実在ファイルを最大7件取得
+    available = sorted([
+        datetime.date.fromisoformat(p.stem)
+        for p in research_path.glob("????-??-??.md")
+        if (today - datetime.date.fromisoformat(p.stem)).days <= 14
+    ])
+    if available:
+        return available[-7:]
+
+    return last_week
 
 
 def parse_markdown(filepath):
@@ -313,7 +329,7 @@ def add_summary_slide(prs, all_ideas, week_start, week_end):
 
 
 def generate_report(research_dir="research", output_dir="reports"):
-    dates = get_last_week_dates()
+    dates = get_last_week_dates(research_dir)
     week_start = dates[0]
     week_end = dates[-1]
 
