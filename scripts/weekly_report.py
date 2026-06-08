@@ -132,19 +132,19 @@ def add_title_slide(prs, week_start, week_end, total_days):
 
     # メインタイトル
     add_textbox(slide, "飲食トレンド週次レポート",
-                Inches(0.8), Inches(2.2), Inches(8.4), Inches(1.2),
-                font_size=36, bold=True, color=COLOR_WHITE, align=PP_ALIGN.CENTER)
+                Inches(1.0), Inches(2.2), Inches(11.33), Inches(1.2),
+                font_size=40, bold=True, color=COLOR_WHITE, align=PP_ALIGN.CENTER)
 
     # 期間
     period = f"{week_start.strftime('%Y年%m月%d日')}（月）〜{week_end.strftime('%m月%d日')}（日）"
     add_textbox(slide, period,
-                Inches(0.8), Inches(3.5), Inches(8.4), Inches(0.7),
-                font_size=18, color=COLOR_ACCENT, align=PP_ALIGN.CENTER)
+                Inches(1.0), Inches(3.5), Inches(11.33), Inches(0.7),
+                font_size=20, color=COLOR_ACCENT, align=PP_ALIGN.CENTER)
 
     # サブテキスト
     add_textbox(slide, f"対象日数：{total_days}日分　｜　自動生成レポート",
-                Inches(0.8), Inches(4.2), Inches(8.4), Inches(0.5),
-                font_size=13, color=COLOR_LIGHT, align=PP_ALIGN.CENTER)
+                Inches(1.0), Inches(4.3), Inches(11.33), Inches(0.5),
+                font_size=14, color=COLOR_LIGHT, align=PP_ALIGN.CENTER)
 
     # アクセントライン（下部）
     shape2 = slide.shapes.add_shape(
@@ -157,22 +157,51 @@ def add_title_slide(prs, week_start, week_end, total_days):
     return slide
 
 
+def add_section_block(slide, title, body_text, left, top, width, height, accent_color, text_color):
+    """セクションタイトル＋本文のブロックを描画する"""
+    # 背景
+    bg = slide.shapes.add_shape(1, left, top, width, height)
+    bg.fill.solid()
+    bg.fill.fore_color.rgb = COLOR_SECTION
+    bg.line.fill.background()
+
+    # 左アクセントバー
+    bar = slide.shapes.add_shape(1, left, top, Inches(0.04), height)
+    bar.fill.solid()
+    bar.fill.fore_color.rgb = accent_color
+    bar.line.fill.background()
+
+    # タイトル
+    add_textbox(slide, title,
+                left + Inches(0.12), top + Inches(0.08),
+                width - Inches(0.2), Inches(0.3),
+                font_size=10, bold=True, color=accent_color)
+
+    # 本文
+    add_textbox(slide, body_text,
+                left + Inches(0.12), top + Inches(0.4),
+                width - Inches(0.2), height - Inches(0.48),
+                font_size=9, color=text_color, wrap=True)
+
+
 def add_daily_slide(prs, date, sections):
-    """1日分のスライドを作成する"""
+    """1日分のスライドを作成する（16:9レイアウト）"""
     slide_layout = prs.slide_layouts[6]
     slide = prs.slides.add_slide(slide_layout)
     set_slide_background(slide, prs, COLOR_BG)
 
-    W = prs.slide_width
+    W = prs.slide_width   # 13.33inch
+    H = prs.slide_height  # 7.5inch
 
     # 上部アクセントバー
-    shape = slide.shapes.add_shape(1, 0, 0, W, Inches(0.06))
+    shape = slide.shapes.add_shape(1, 0, 0, W, Inches(0.05))
     shape.fill.solid()
     shape.fill.fore_color.rgb = COLOR_ACCENT
     shape.line.fill.background()
 
-    # 日付ヘッダー背景
-    header_bg = slide.shapes.add_shape(1, 0, Inches(0.06), W, Inches(0.9))
+    # ヘッダー背景
+    header_h = Inches(0.75)
+    header_bg = slide.shapes.add_shape(1, 0, Inches(0.05), W, header_h)
     header_bg.fill.solid()
     header_bg.fill.fore_color.rgb = COLOR_SECTION
     header_bg.line.fill.background()
@@ -181,104 +210,87 @@ def add_daily_slide(prs, date, sections):
     weekday = weekdays[date.weekday()]
     date_str = f"{date.strftime('%Y年%m月%d日')}（{weekday}）"
     add_textbox(slide, date_str,
-                Inches(0.4), Inches(0.12), Inches(5), Inches(0.7),
-                font_size=20, bold=True, color=COLOR_WHITE)
+                Inches(0.4), Inches(0.1), Inches(8), Inches(0.6),
+                font_size=22, bold=True, color=COLOR_WHITE)
 
-    # ハイライト（左カラム）
-    col1_left = Inches(0.4)
-    col1_width = Inches(4.4)
-    col2_left = Inches(5.1)
-    col2_width = Inches(4.4)
-    content_top = Inches(1.15)
-    section_gap = Inches(0.3)
+    # ========== レイアウト定数 ==========
+    PAD = Inches(0.25)         # 外余白
+    GAP = Inches(0.18)         # ブロック間隔
+    content_top = Inches(0.05) + header_h + Inches(0.18)
+    content_h = H - content_top - Inches(0.15)  # 有効高さ
 
-    y = content_top
+    # 3カラム構成
+    col_w = (W - PAD * 2 - GAP * 2) / 3
+    col1_x = PAD
+    col2_x = col1_x + col_w + GAP
+    col3_x = col2_x + col_w + GAP
 
-    # 今日のハイライト
-    add_textbox(slide, "▍ 今日のハイライト",
-                col1_left, y, col1_width, Inches(0.35),
-                font_size=12, bold=True, color=COLOR_ACCENT)
-    y += Inches(0.35)
+    # --- 左カラム: ハイライト（上） + SNSトレンド（下） ---
+    highlight_h = content_h * 0.52
+    sns_h = content_h - highlight_h - GAP
 
     highlight_text = sections.get("今日のハイライト", "（データなし）")
     highlight_clean = re.sub(r'\*+', '', highlight_text).strip()
-    add_textbox(slide, highlight_clean[:200],
-                col1_left, y, col1_width, Inches(1.0),
-                font_size=10, color=COLOR_LIGHT)
-    y += Inches(1.05) + section_gap
+    add_section_block(slide, "今日のハイライト", highlight_clean[:280],
+                      col1_x, content_top, col_w, highlight_h,
+                      COLOR_ACCENT, COLOR_LIGHT)
 
-    # 話題の料理・食材
-    add_textbox(slide, "▍ 話題の料理・食材",
-                col1_left, y, col1_width, Inches(0.35),
-                font_size=12, bold=True, color=COLOR_ACCENT)
-    y += Inches(0.35)
-
-    food_bullets = extract_bullets(sections.get("話題の料理・食材", ""), max_items=4)
-    food_text = "\n".join(f"• {b}" for b in food_bullets) if food_bullets else "（データなし）"
-    add_textbox(slide, food_text,
-                col1_left, y, col1_width, Inches(1.2),
-                font_size=10, color=COLOR_LIGHT)
-    y += Inches(1.25) + section_gap
-
-    # SNSトレンド
-    add_textbox(slide, "▍ SNSトレンド",
-                col1_left, y, col1_width, Inches(0.35),
-                font_size=12, bold=True, color=COLOR_ACCENT)
-    y += Inches(0.35)
-
-    sns_bullets = extract_bullets(sections.get("SNSトレンド", ""), max_items=3)
+    sns_bullets = extract_bullets(sections.get("SNSトレンド", ""), max_items=4)
     sns_text = "\n".join(f"• {b}" for b in sns_bullets) if sns_bullets else "（データなし）"
-    add_textbox(slide, sns_text,
-                col1_left, y, col1_width, Inches(0.9),
-                font_size=10, color=COLOR_LIGHT)
+    add_section_block(slide, "SNSトレンド", sns_text,
+                      col1_x, content_top + highlight_h + GAP, col_w, sns_h,
+                      RGBColor(0x5B, 0xB8, 0xD4), COLOR_LIGHT)
 
-    # 右カラム
-    y2 = content_top
+    # --- 中カラム: 話題の料理・食材（上） + 注目の業態（下） ---
+    food_h = content_h * 0.52
+    store_h = content_h - food_h - GAP
 
-    # 注目の業態
-    add_textbox(slide, "▍ 注目の業態・新店舗",
-                col2_left, y2, col2_width, Inches(0.35),
-                font_size=12, bold=True, color=COLOR_ACCENT)
-    y2 += Inches(0.35)
+    food_bullets = extract_bullets(sections.get("話題の料理・食材", ""), max_items=5)
+    food_text = "\n".join(f"• {b}" for b in food_bullets) if food_bullets else "（データなし）"
+    add_section_block(slide, "話題の料理・食材", food_text,
+                      col2_x, content_top, col_w, food_h,
+                      RGBColor(0xE8, 0x7C, 0x3C), COLOR_LIGHT)
 
-    store_bullets = extract_bullets(sections.get("注目の業態・新店舗", ""), max_items=3)
+    store_bullets = extract_bullets(sections.get("注目の業態・新店舗", ""), max_items=4)
     store_text = "\n".join(f"• {b}" for b in store_bullets) if store_bullets else "（データなし）"
-    add_textbox(slide, store_text,
-                col2_left, y2, col2_width, Inches(0.9),
-                font_size=10, color=COLOR_LIGHT)
-    y2 += Inches(0.95) + section_gap
+    add_section_block(slide, "注目の業態・新店舗", store_text,
+                      col2_x, content_top + food_h + GAP, col_w, store_h,
+                      RGBColor(0x7C, 0xC8, 0x7C), COLOR_LIGHT)
 
-    # 発酵・健康・肉料理
-    add_textbox(slide, "▍ 発酵・健康・肉料理",
-                col2_left, y2, col2_width, Inches(0.35),
-                font_size=12, bold=True, color=COLOR_ACCENT)
-    y2 += Inches(0.35)
+    # --- 右カラム: 発酵・健康（上） + 事業アイデア（下） ---
+    ferment_h = content_h * 0.40
+    idea_h = content_h - ferment_h - GAP
 
-    ferment_bullets = extract_bullets(sections.get("発酵・健康・肉料理関連", ""), max_items=3)
+    ferment_bullets = extract_bullets(sections.get("発酵・健康・肉料理関連", ""), max_items=4)
     ferment_text = "\n".join(f"• {b}" for b in ferment_bullets) if ferment_bullets else "（データなし）"
-    add_textbox(slide, ferment_text,
-                col2_left, y2, col2_width, Inches(0.9),
-                font_size=10, color=COLOR_LIGHT)
-    y2 += Inches(0.95) + section_gap
+    add_section_block(slide, "発酵・健康・肉料理", ferment_text,
+                      col3_x, content_top, col_w, ferment_h,
+                      RGBColor(0xC8, 0x96, 0xE8), COLOR_LIGHT)
 
-    # 事業アイデアメモ（ハイライト枠）
-    idea_bg = slide.shapes.add_shape(
-        1, col2_left, y2, col2_width, Inches(1.4)
-    )
+    # 事業アイデアメモ（アクセント枠）
+    idea_top = content_top + ferment_h + GAP
+    idea_bg = slide.shapes.add_shape(1, col3_x, idea_top, col_w, idea_h)
     idea_bg.fill.solid()
-    idea_bg.fill.fore_color.rgb = RGBColor(0x2A, 0x1F, 0x0A)
+    idea_bg.fill.fore_color.rgb = RGBColor(0x22, 0x18, 0x08)
     idea_bg.line.color.rgb = COLOR_ACCENT
-    idea_bg.line.width = Pt(1)
+    idea_bg.line.width = Pt(1.5)
 
-    add_textbox(slide, "💡 事業へのアイデアメモ",
-                col2_left + Inches(0.15), y2 + Inches(0.08), col2_width - Inches(0.3), Inches(0.3),
-                font_size=11, bold=True, color=COLOR_ACCENT)
+    bar3 = slide.shapes.add_shape(1, col3_x, idea_top, Inches(0.04), idea_h)
+    bar3.fill.solid()
+    bar3.fill.fore_color.rgb = COLOR_ACCENT
+    bar3.line.fill.background()
 
-    idea_bullets = extract_bullets(sections.get("事業へのアイデアメモ", ""), max_items=2)
+    add_textbox(slide, "💡 事業アイデアメモ",
+                col3_x + Inches(0.12), idea_top + Inches(0.08),
+                col_w - Inches(0.2), Inches(0.3),
+                font_size=10, bold=True, color=COLOR_ACCENT)
+
+    idea_bullets = extract_bullets(sections.get("事業へのアイデアメモ", ""), max_items=3)
     idea_text = "\n".join(f"• {b}" for b in idea_bullets) if idea_bullets else "（データなし）"
     add_textbox(slide, idea_text,
-                col2_left + Inches(0.15), y2 + Inches(0.42), col2_width - Inches(0.3), Inches(0.9),
-                font_size=9, color=COLOR_LIGHT)
+                col3_x + Inches(0.12), idea_top + Inches(0.42),
+                col_w - Inches(0.2), idea_h - Inches(0.5),
+                font_size=9, color=COLOR_LIGHT, wrap=True)
 
     return slide
 
@@ -290,40 +302,69 @@ def add_summary_slide(prs, all_ideas, week_start, week_end):
     set_slide_background(slide, prs, COLOR_BG)
 
     W = prs.slide_width
+    H = prs.slide_height
 
-    shape = slide.shapes.add_shape(1, 0, 0, W, Inches(0.06))
+    shape = slide.shapes.add_shape(1, 0, 0, W, Inches(0.05))
     shape.fill.solid()
     shape.fill.fore_color.rgb = COLOR_ACCENT
     shape.line.fill.background()
 
+    header_bg = slide.shapes.add_shape(1, 0, Inches(0.05), W, Inches(0.75))
+    header_bg.fill.solid()
+    header_bg.fill.fore_color.rgb = COLOR_SECTION
+    header_bg.line.fill.background()
+
     add_textbox(slide, "週次まとめ｜事業アイデア総覧",
-                Inches(0.4), Inches(0.2), Inches(9.2), Inches(0.7),
-                font_size=24, bold=True, color=COLOR_WHITE)
+                Inches(0.4), Inches(0.1), Inches(10), Inches(0.6),
+                font_size=22, bold=True, color=COLOR_WHITE)
 
     period = f"{week_start.strftime('%m/%d')}〜{week_end.strftime('%m/%d')} の気づき"
     add_textbox(slide, period,
-                Inches(0.4), Inches(0.9), Inches(9.2), Inches(0.4),
-                font_size=13, color=COLOR_ACCENT)
+                Inches(10.5), Inches(0.18), Inches(2.5), Inches(0.45),
+                font_size=11, color=COLOR_ACCENT, align=PP_ALIGN.RIGHT)
 
-    # アイデア一覧
-    y = Inches(1.4)
-    for i, (date, ideas) in enumerate(all_ideas.items()):
-        if not ideas:
-            continue
-        weekdays = ["月", "火", "水", "木", "金", "土", "日"]
-        day_label = f"{date.strftime('%m/%d')}（{weekdays[date.weekday()]}）"
-        add_textbox(slide, day_label,
-                    Inches(0.4), y, Inches(1.8), Inches(0.35),
-                    font_size=11, bold=True, color=COLOR_ACCENT)
+    # アイデアカード一覧
+    PAD = Inches(0.35)
+    GAP = Inches(0.2)
+    y = Inches(1.0)
+    row_h = Inches(0.72)
 
-        idea_text = "　" + "　／　".join(ideas[:2])
-        add_textbox(slide, idea_text,
-                    Inches(2.3), y, Inches(7.2), Inches(0.35),
-                    font_size=10, color=COLOR_LIGHT)
-        y += Inches(0.42)
-
-        if y > Inches(6.8):
+    weekdays = ["月", "火", "水", "木", "金", "土", "日"]
+    for date, ideas in all_ideas.items():
+        if y + row_h > H - Inches(0.2):
             break
+
+        # 日付バッジ背景
+        badge = slide.shapes.add_shape(1, PAD, y, Inches(1.6), row_h)
+        badge.fill.solid()
+        badge.fill.fore_color.rgb = RGBColor(0x2D, 0x2D, 0x44)
+        badge.line.color.rgb = COLOR_ACCENT
+        badge.line.width = Pt(0.75)
+
+        day_label = f"{date.strftime('%m/%d')}\n（{weekdays[date.weekday()]}）"
+        add_textbox(slide, day_label,
+                    PAD + Inches(0.05), y + Inches(0.06),
+                    Inches(1.5), row_h - Inches(0.1),
+                    font_size=11, bold=True, color=COLOR_ACCENT, align=PP_ALIGN.CENTER)
+
+        # アイデア本文背景
+        idea_x = PAD + Inches(1.6) + Inches(0.12)
+        idea_w = W - idea_x - PAD
+        idea_bg = slide.shapes.add_shape(1, idea_x, y, idea_w, row_h)
+        idea_bg.fill.solid()
+        idea_bg.fill.fore_color.rgb = RGBColor(0x22, 0x22, 0x38)
+        idea_bg.line.fill.background()
+
+        if ideas:
+            idea_text = "　•  " + "\n　•  ".join(ideas[:3])
+        else:
+            idea_text = "　（記録なし）"
+        add_textbox(slide, idea_text,
+                    idea_x + Inches(0.1), y + Inches(0.08),
+                    idea_w - Inches(0.2), row_h - Inches(0.14),
+                    font_size=10, color=COLOR_LIGHT)
+
+        y += row_h + GAP
 
     return slide
 
@@ -334,7 +375,7 @@ def generate_report(research_dir="research", output_dir="reports"):
     week_end = dates[-1]
 
     prs = Presentation()
-    prs.slide_width = Inches(10)
+    prs.slide_width = Inches(13.33)
     prs.slide_height = Inches(7.5)
 
     # 表紙
