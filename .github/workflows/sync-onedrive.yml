@@ -19,13 +19,15 @@ jobs:
       - name: Configure rclone
         run: |
           mkdir -p ~/.config/rclone
-          cat > ~/.config/rclone/rclone.conf << EOF
+          cat > ~/.config/rclone/rclone.conf << 'RCLONEEOF'
           [onedrive]
           type = onedrive
-          token = ${{ secrets.RCLONE_ONEDRIVE_TOKEN }}
-          drive_id = ${{ secrets.RCLONE_ONEDRIVE_DRIVE_ID }}
+          token = TOKEN_PLACEHOLDER
+          drive_id = DRIVEID_PLACEHOLDER
           drive_type = personal
-          EOF
+          RCLONEEOF
+          sed -i "s|TOKEN_PLACEHOLDER|${{ secrets.RCLONE_ONEDRIVE_TOKEN }}|" ~/.config/rclone/rclone.conf
+          sed -i "s|DRIVEID_PLACEHOLDER|${{ secrets.RCLONE_ONEDRIVE_DRIVE_ID }}|" ~/.config/rclone/rclone.conf
 
       - name: Sync to OneDrive
         run: |
