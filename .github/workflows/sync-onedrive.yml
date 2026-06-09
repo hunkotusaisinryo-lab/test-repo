@@ -1,0 +1,37 @@
+name: Sync to OneDrive
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install rclone
+        run: |
+          curl https://rclone.org/install.sh | sudo bash
+
+      - name: Configure rclone
+        run: |
+          mkdir -p ~/.config/rclone
+          cat > ~/.config/rclone/rclone.conf << EOF
+          [onedrive]
+          type = onedrive
+          token = ${{ secrets.RCLONE_ONEDRIVE_TOKEN }}
+          drive_id = ${{ secrets.RCLONE_ONEDRIVE_DRIVE_ID }}
+          drive_type = personal
+          EOF
+
+      - name: Sync to OneDrive
+        run: |
+          rclone sync . onedrive:肉酒場然_プロジェクト \
+            --exclude ".git/**" \
+            --exclude ".github/**" \
+            --exclude "__pycache__/**" \
+            --exclude "*.pyc" \
+            --progress
