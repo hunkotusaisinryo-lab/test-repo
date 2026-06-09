@@ -17,17 +17,13 @@ jobs:
           curl https://rclone.org/install.sh | sudo bash
 
       - name: Configure rclone
+        env:
+          RCLONE_TOKEN: ${{ secrets.RCLONE_ONEDRIVE_TOKEN }}
+          RCLONE_DRIVE_ID: ${{ secrets.RCLONE_ONEDRIVE_DRIVE_ID }}
         run: |
           mkdir -p ~/.config/rclone
-          cat > ~/.config/rclone/rclone.conf << 'RCLONEEOF'
-          [onedrive]
-          type = onedrive
-          token = TOKEN_PLACEHOLDER
-          drive_id = DRIVEID_PLACEHOLDER
-          drive_type = personal
-          RCLONEEOF
-          sed -i "s|TOKEN_PLACEHOLDER|${{ secrets.RCLONE_ONEDRIVE_TOKEN }}|" ~/.config/rclone/rclone.conf
-          sed -i "s|DRIVEID_PLACEHOLDER|${{ secrets.RCLONE_ONEDRIVE_DRIVE_ID }}|" ~/.config/rclone/rclone.conf
+          printf '[onedrive]\ntype = onedrive\ntoken = %s\ndrive_id = %s\ndrive_type = personal\n' \
+            "$RCLONE_TOKEN" "$RCLONE_DRIVE_ID" > ~/.config/rclone/rclone.conf
 
       - name: Sync to OneDrive
         run: |
