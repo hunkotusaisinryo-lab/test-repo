@@ -951,7 +951,7 @@ def s_closing(prs):
 
 # ===== メイン =====
 
-def generate(output_dir="reports"):
+def generate(output_dir="zen/07_融資・投資家資料"):
     prs = Presentation()
     prs.slide_width = SW
     prs.slide_height = SH

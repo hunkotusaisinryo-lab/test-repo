@@ -497,7 +497,7 @@ def add_business_idea_slide(prs, all_sections, week_start, week_end):
     return slide
 
 
-def generate_report(research_dir="research", output_dir="reports"):
+def generate_report(research_dir="research", output_dir="zen/06_週次レポート"):
     dates = get_last_week_dates(research_dir)
     week_start = dates[0]
     week_end = dates[-1]
