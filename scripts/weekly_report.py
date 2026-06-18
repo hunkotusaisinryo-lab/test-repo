@@ -369,6 +369,134 @@ def add_summary_slide(prs, all_ideas, week_start, week_end):
     return slide
 
 
+def add_business_idea_slide(prs, all_sections, week_start, week_end):
+    """事業アイデア深掘りスライド（毎週必ず生成）"""
+    slide_layout = prs.slide_layouts[6]
+    slide = prs.slides.add_slide(slide_layout)
+    set_slide_background(slide, prs, COLOR_BG)
+
+    W = prs.slide_width
+    H = prs.slide_height
+
+    # ヘッダー
+    shape = slide.shapes.add_shape(1, 0, 0, W, Inches(0.05))
+    shape.fill.solid(); shape.fill.fore_color.rgb = COLOR_ACCENT
+    shape.line.fill.background()
+
+    header_bg = slide.shapes.add_shape(1, 0, Inches(0.05), W, Inches(0.75))
+    header_bg.fill.solid(); header_bg.fill.fore_color.rgb = COLOR_SECTION
+    header_bg.line.fill.background()
+
+    add_textbox(slide, "💡 今週の事業アイデア｜肉酒場 然 への活用",
+                Inches(0.4), Inches(0.1), Inches(10), Inches(0.6),
+                font_size=22, bold=True, color=COLOR_WHITE)
+
+    period = f"{week_start.strftime('%m/%d')}〜{week_end.strftime('%m/%d')}"
+    add_textbox(slide, period,
+                Inches(11.0), Inches(0.18), Inches(2.0), Inches(0.45),
+                font_size=11, color=COLOR_ACCENT, align=PP_ALIGN.RIGHT)
+
+    # 週のトレンドから自動でアイデアを生成
+    PAD = Inches(0.35)
+    TOP = Inches(0.95)
+    GAP = Inches(0.18)
+    W3 = (W - PAD * 2 - GAP * 2) / 3
+
+    # 全日のデータから各セクションをまとめる
+    all_highlights = []
+    all_foods = []
+    all_ferments = []
+    all_sns = []
+    all_ideas = []
+
+    for sections in all_sections.values():
+        highlight = re.sub(r'\*+', '', sections.get("今日のハイライト", "")).strip()
+        if highlight:
+            all_highlights.append(highlight[:80])
+        all_foods += extract_bullets(sections.get("話題の料理・食材", ""), max_items=2)
+        all_ferments += extract_bullets(sections.get("発酵・健康・肉料理関連", ""), max_items=2)
+        all_sns += extract_bullets(sections.get("SNSトレンド", ""), max_items=2)
+        all_ideas += extract_bullets(sections.get("事業へのアイデアメモ", ""), max_items=3)
+
+    # 左カラム：今週の注目トレンド
+    col1_x = PAD
+    bg1 = slide.shapes.add_shape(1, col1_x, TOP, W3, H - TOP - Inches(0.2))
+    bg1.fill.solid(); bg1.fill.fore_color.rgb = COLOR_SECTION
+    bg1.line.fill.background()
+    bar1 = slide.shapes.add_shape(1, col1_x, TOP, Inches(0.04), H - TOP - Inches(0.2))
+    bar1.fill.solid(); bar1.fill.fore_color.rgb = COLOR_ACCENT
+    bar1.line.fill.background()
+
+    add_textbox(slide, "今週のキートレンド",
+                col1_x + Inches(0.12), TOP + Inches(0.08), W3 - Inches(0.2), Inches(0.3),
+                font_size=11, bold=True, color=COLOR_ACCENT)
+
+    trend_lines = []
+    for f in all_foods[:4]:
+        trend_lines.append(f"🍖 {f[:45]}")
+    for s in all_ferments[:3]:
+        trend_lines.append(f"🧪 {s[:45]}")
+    for sn in all_sns[:2]:
+        trend_lines.append(f"📱 {sn[:45]}")
+
+    add_textbox(slide, "\n".join(trend_lines) if trend_lines else "（データなし）",
+                col1_x + Inches(0.12), TOP + Inches(0.45), W3 - Inches(0.2), H - TOP - Inches(0.7),
+                font_size=9, color=COLOR_LIGHT, wrap=True)
+
+    # 中カラム：日次アイデアまとめ
+    col2_x = PAD + W3 + GAP
+    bg2 = slide.shapes.add_shape(1, col2_x, TOP, W3, H - TOP - Inches(0.2))
+    bg2.fill.solid(); bg2.fill.fore_color.rgb = COLOR_SECTION
+    bg2.line.fill.background()
+    bar2 = slide.shapes.add_shape(1, col2_x, TOP, Inches(0.04), H - TOP - Inches(0.2))
+    bar2.fill.solid(); bar2.fill.fore_color.rgb = RGBColor(0x5B, 0xB8, 0x6C)
+    bar2.line.fill.background()
+
+    add_textbox(slide, "日次アイデアメモ（今週分）",
+                col2_x + Inches(0.12), TOP + Inches(0.08), W3 - Inches(0.2), Inches(0.3),
+                font_size=11, bold=True, color=RGBColor(0x5B, 0xB8, 0x6C))
+
+    idea_lines = [f"• {i[:55]}" for i in all_ideas[:8]] if all_ideas else ["（今週のアイデアメモなし）"]
+    add_textbox(slide, "\n".join(idea_lines),
+                col2_x + Inches(0.12), TOP + Inches(0.45), W3 - Inches(0.2), H - TOP - Inches(0.7),
+                font_size=9, color=COLOR_LIGHT, wrap=True)
+
+    # 右カラム：然への具体的活用アイデア（固定テンプレート＋トレンド反映）
+    col3_x = PAD + W3 * 2 + GAP * 2
+    bg3 = slide.shapes.add_shape(1, col3_x, TOP, W3, H - TOP - Inches(0.2))
+    bg3.fill.solid(); bg3.fill.fore_color.rgb = RGBColor(0x22, 0x18, 0x08)
+    bg3.line.color.rgb = COLOR_ACCENT; bg3.line.width = Pt(1.5)
+    bar3 = slide.shapes.add_shape(1, col3_x, TOP, Inches(0.04), H - TOP - Inches(0.2))
+    bar3.fill.solid(); bar3.fill.fore_color.rgb = COLOR_ACCENT
+    bar3.line.fill.background()
+
+    add_textbox(slide, "🔥 肉酒場 然 への活用アクション",
+                col3_x + Inches(0.12), TOP + Inches(0.08), W3 - Inches(0.2), Inches(0.3),
+                font_size=11, bold=True, color=COLOR_ACCENT)
+
+    # トレンドから自動でアクションを生成
+    action_items = []
+    if all_foods:
+        action_items.append(f"【メニュー】{all_foods[0][:30]}を糀漬けアレンジで検討")
+    if all_ferments:
+        action_items.append(f"【発酵】{all_ferments[0][:30]}を看板メニューに応用")
+    if all_sns:
+        action_items.append(f"【SNS】{all_sns[0][:30]}の投稿フォーマットを参考に")
+    # 固定アクション
+    action_items += [
+        "【仕込み】今週のトレンド食材を翌週の漬け込み素材に追加",
+        "【集客】週次トレンドをInstagramストーリーズで発信",
+        "【FC】話題業態のOPSを分析してマニュアルに反映",
+    ]
+
+    action_text = "\n\n".join([f"▶ {a}" for a in action_items[:5]])
+    add_textbox(slide, action_text,
+                col3_x + Inches(0.12), TOP + Inches(0.45), W3 - Inches(0.2), H - TOP - Inches(0.7),
+                font_size=9, color=COLOR_LIGHT, wrap=True)
+
+    return slide
+
+
 def generate_report(research_dir="research", output_dir="reports"):
     dates = get_last_week_dates(research_dir)
     week_start = dates[0]
@@ -400,6 +528,9 @@ def generate_report(research_dir="research", output_dir="reports"):
     # まとめスライド
     if all_ideas:
         add_summary_slide(prs, all_ideas, week_start, week_end)
+
+    # 事業アイデア深掘りスライド（毎週必ず生成）
+    add_business_idea_slide(prs, all_sections, week_start, week_end)
 
     # 保存
     os.makedirs(output_dir, exist_ok=True)
