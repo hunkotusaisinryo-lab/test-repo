@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '0 0 * * *'  # 毎日09:00 JST（UTC 00:00）
   workflow_dispatch:       # 手動実行も可能
+    inputs:
+      target_date:
+        description: '対象日付（YYYY-MM-DD形式。空欄なら今日）'
+        required: false
+        default: ''
 
 jobs:
   research:
@@ -28,6 +33,7 @@ jobs:
       - name: トレンドリサーチを実行
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TARGET_DATE: ${{ github.event.inputs.target_date }}
         run: python scripts/daily_trend_research.py
 
       - name: 結果をコミット・プッシュ

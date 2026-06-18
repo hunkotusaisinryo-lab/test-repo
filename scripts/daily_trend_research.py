@@ -11,7 +11,8 @@ import sys
 
 def research_trends():
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-    today = datetime.date.today().strftime("%Y-%m-%d")
+    target = os.environ.get("TARGET_DATE", "").strip()
+    today = target if target else datetime.date.today().strftime("%Y-%m-%d")
 
     prompt = f"""今日（{today}）の飲食・グルメ・外食産業のトレンドをリサーチしてください。
 
