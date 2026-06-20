@@ -11,8 +11,7 @@ import sys
 
 def research_trends():
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-    target = os.environ.get("TARGET_DATE", "").strip()
-    today = target if target else datetime.date.today().strftime("%Y-%m-%d")
+    today = datetime.date.today().strftime("%Y-%m-%d")
 
     prompt = f"""今日（{today}）の飲食・グルメ・外食産業のトレンドをリサーチしてください。
 
@@ -54,7 +53,7 @@ def research_trends():
 
     response = client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=4096,
+        max_tokens=2000,
         tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 5}],
         messages=[{"role": "user", "content": prompt}]
     )
