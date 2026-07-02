@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '0 0 * * *'  # 毎日09:00 JST（UTC 00:00）
   workflow_dispatch:       # 手動実行も可能
+    inputs:
+      target_date:
+        description: '対象日付（YYYY-MM-DD形式。空欄なら今日）'
+        required: false
+        default: ''
 
 jobs:
   research:
@@ -28,12 +33,26 @@ jobs:
       - name: トレンドリサーチを実行
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TARGET_DATE: ${{ github.event.inputs.target_date }}
         run: python scripts/daily_trend_research.py
+
+      - name: 週次レポートを生成（月曜のみ）
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          pip install python-pptx -q
+          DAY=$(python3 -c "import datetime; print(datetime.date.today().weekday())")
+          if [ "$DAY" = "0" ]; then
+            echo "月曜日のため週次レポートを生成します"
+            python scripts/weekly_report.py
+          else
+            echo "週次レポートの生成をスキップ（月曜日以外）"
+          fi
 
       - name: 結果をコミット・プッシュ
         run: |
           git config user.name "Claude Research Bot"
           git config user.email "noreply@anthropic.com"
-          git add research/
+          git add research/ zen/ reports/
           git diff --staged --quiet || git commit -m "飲食トレンドリサーチ $(date '+%Y-%m-%d')"
           git push origin main
