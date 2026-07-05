@@ -232,13 +232,13 @@ def fig_growth_chart():
 
 
 def fig_pl_chart():
-    """簡易PL棒グラフ（だし 然 1店舗モデル）"""
+    """簡易PL棒グラフ（だし 然 1店舗モデル・利益率15%）"""
     fig, ax = plt.subplots(figsize=(5.5, 3.5))
     fig.patch.set_facecolor(MPL_LIGHT)
     ax.set_facecolor(MPL_LIGHT)
 
     labels = ["売上", "原価", "人件費", "家賃", "その他", "営業利益"]
-    values = [960, -290, -190, -75, -65, 340]
+    values = [960, -290, -250, -150, -126, 144]
     colors = [MPL_GOLD if v > 0 else ("#C0392B" if i < 5 else MPL_GREEN)
               for i, v in enumerate(values)]
     colors[-1] = MPL_GREEN
@@ -251,10 +251,45 @@ def fig_pl_chart():
                 color=MPL_GREEN if val > 0 else "#C0392B")
 
     ax.set_ylabel("金額（万円/月）", fontfamily="IPAGothic", fontsize=9)
-    ax.set_title("だし 然 月次P&L（1店舗）", fontfamily="IPAGothic",
+    ax.set_title("だし 然 月次P&L（1店舗・利益率15%）", fontfamily="IPAGothic",
                  fontsize=11, color=MPL_GOLD, fontweight="bold")
     ax.spines[["top","right"]].set_visible(False)
     ax.set_xticklabels(labels, fontfamily="IPAGothic", fontsize=9)
+    fig.tight_layout()
+    return fig
+
+
+def fig_group_pl():
+    """グループ各ブランド 月次PL比較（1店舗）"""
+    fig, ax = plt.subplots(figsize=(5.5, 3.5))
+    fig.patch.set_facecolor(MPL_LIGHT)
+    ax.set_facecolor(MPL_LIGHT)
+
+    brands = ["だし 然", "肉酒場 然", "蕎麦 然"]
+    sales   = [960, 675, 480]
+    profits = [144, 120,  60]
+    margins = [15,  18,  12.5]
+    colors  = [MPL_GOLD, MPL_RED, MPL_NAVY]
+
+    x = np.arange(len(brands))
+    w = 0.35
+    ax.bar(x - w/2, sales,   w, label="月次売上",   color=colors, alpha=0.4)
+    bars2 = ax.bar(x + w/2, profits, w, label="月次営業利益", color=colors, alpha=0.9)
+
+    for bar, val, pct in zip(bars2, profits, margins):
+        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 6,
+                f"{val}万\n({pct:.0f}%)", ha="center", va="bottom",
+                fontsize=8, fontfamily="IPAGothic", fontweight="bold",
+                color=MPL_GREEN)
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(brands, fontfamily="IPAGothic", fontsize=10)
+    ax.set_ylabel("金額（万円/月）", fontfamily="IPAGothic", fontsize=9)
+    ax.set_title("各ブランド 月次PL比較（1店舗）", fontfamily="IPAGothic",
+                 fontsize=11, color=MPL_GREEN, fontweight="bold")
+    ax.legend(prop={"family": "IPAGothic", "size": 9})
+    ax.spines[["top","right"]].set_visible(False)
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{int(v):,}"))
     fig.tight_layout()
     return fig
 
@@ -265,7 +300,7 @@ def fig_recovery_chart():
     fig.patch.set_facecolor(MPL_LIGHT)
     ax.set_facecolor(MPL_LIGHT)
 
-    months = list(range(0, 25))
+    months = list(range(0, 31))
     dashi_cum = []
     soba_cum = []
     init_dashi = -3000
@@ -276,8 +311,8 @@ def fig_recovery_chart():
             dashi_cum.append(init_dashi)
             soba_cum.append(init_soba)
         else:
-            profit_d = 130 if m <= 3 else (200 if m <= 6 else (290 if m <= 12 else 330))
-            profit_s = 50 if m <= 3 else (90 if m <= 6 else 130)
+            profit_d = 60 if m <= 3 else (100 if m <= 6 else (130 if m <= 12 else 144))
+            profit_s = 25 if m <= 3 else (45 if m <= 6 else 60)
             dashi_cum.append(dashi_cum[-1] + profit_d)
             soba_cum.append(soba_cum[-1] + profit_s)
 
@@ -473,12 +508,12 @@ def slide_03_market(prs):
 def slide_04_overview(prs):
     slide = blank(prs)
     add_header_band(slide, "然グループ  全体像")
-    headers = ["ブランド", "業態", "客単価", "ターゲット", "展開モデル", "月次利益/店"]
+    headers = ["ブランド", "業態", "月次売上/店", "利益率", "展開モデル", "月次利益/店"]
     rows = [
-        ["然 出汁", "出汁定食・体験ディナー", "1,800〜9,000円", "ワーカー＋インバウンド", "直営＋FC", "330万円"],
-        ["然 肉と発酵", "発酵×炭火居酒屋", "4,000〜6,000円", "20〜40代・飲み会需要", "直営中心", "200万円"],
-        ["然 立ちそば", "立ち食い蕎麦", "1,500円", "ビジネスパーソン（ランチ）", "FC特化", "132万円"],
-        ["SNS事業部", "飲食特化SNSコンサル", "月9.8〜39.8万円", "飲食店オーナー", "コンサル", "83万円"],
+        ["然 出汁", "出汁定食・体験ディナー", "960万円", "15%", "直営＋FC", "144万円"],
+        ["然 肉と発酵", "発酵×炭火居酒屋", "675万円", "18%", "直営中心", "120万円"],
+        ["然 立ちそば", "立ち食い蕎麦", "480万円", "12.5%", "FC特化", "60万円"],
+        ["SNS事業部", "飲食特化SNSコンサル", "月9.8〜39.8万円", "─", "コンサル", "83万円"],
     ]
     table(slide, headers, rows, Inches(0.3), Inches(1.1), Inches(12.7), Inches(2.5))
 
@@ -545,7 +580,7 @@ def slide_05_dashi(prs):
     embed_figure(slide, fig, Inches(0.3), Inches(3.8), Inches(5.8), Inches(3.3))
 
     # KPI
-    kpis = [("月次売上", "960万円"), ("営業利益", "330万円"), ("利益率", "34%"), ("投資回収", "15〜18ヶ月")]
+    kpis = [("月次売上", "960万円"), ("営業利益", "144万円"), ("利益率", "15%"), ("投資回収", "18〜24ヶ月")]
     for i, (label, val) in enumerate(kpis):
         lx = Inches(6.4 + i * 1.7)
         add_rect(slide, lx, Inches(3.8), Inches(1.5), Inches(1.0), ACCENT)
@@ -593,9 +628,9 @@ def slide_06_niku(prs):
     section_box(slide, "戦略的位置づけ", right_items,
                 Inches(6.8), Inches(1.8), Inches(6.2), ACCENT)
 
-    kpis = [("月次売上目標", "600万円", DARK_RED),
-            ("月次営業利益", "200万円", ACCENT),
-            ("利益率", "33%", DARK_RED),
+    kpis = [("月次売上目標", "675万円", DARK_RED),
+            ("月次営業利益", "120万円", ACCENT),
+            ("利益率", "18%", DARK_RED),
             ("客単価", "5,000円", ACCENT)]
     for i, (label, val, color) in enumerate(kpis):
         lx = Inches(0.3 + i * 3.2)
@@ -641,10 +676,10 @@ def slide_07_soba(prs):
     fig = fig_recovery_chart()
     embed_figure(slide, fig, Inches(0.3), Inches(4.0), Inches(6.0), Inches(3.1))
 
-    kpis = [("月次売上", "348万円", NAVY),
-            ("月次利益", "132万円", ACCENT),
-            ("BEP", "1日43人", NAVY),
-            ("投資回収", "8〜10ヶ月", ACCENT)]
+    kpis = [("月次売上", "480万円", NAVY),
+            ("月次利益", "60万円", ACCENT),
+            ("利益率", "12.5%", NAVY),
+            ("投資回収", "15〜18ヶ月", ACCENT)]
     for i, (label, val, color) in enumerate(kpis):
         lx = Inches(6.5 + i * 1.7)
         add_rect(slide, lx, Inches(4.0), Inches(1.5), Inches(0.95), color)
@@ -656,9 +691,10 @@ def slide_07_soba(prs):
     multi_txt(slide,
         ["■ FC収益シミュレーション（FC1店舗）",
          "初期投資合計：1,100万円",
-         "月次営業利益：約108万円",
-         "投資回収期間：約12ヶ月",
-         "本部ロイヤルティ：FC10店で月139万円"],
+         "月次売上：480万円",
+         "月次営業利益：約50万円（ロイヤルティ控除後）",
+         "投資回収期間：約18〜22ヶ月",
+         "本部ロイヤルティ：FC10店で月192万円（売上の4%）"],
         Inches(6.5), Inches(5.1), Inches(6.5), Inches(2.0),
         size=11, color=TEXT_COLOR)
 
@@ -742,32 +778,32 @@ def slide_09_5year(prs):
 
 def slide_10_revenue(prs):
     slide = blank(prs)
-    add_header_band(slide, "収益モデルサマリー  ─  ストック収益の積み上げ")
+    add_header_band(slide, "収益モデルサマリー  ─  グループ損益と成長ストック")
 
-    # 左：P&L表
-    hdrs = ["ブランド", "1店月次利益", "目標店舗", "グループ月次利益"]
+    # 左上：グループPL比較グラフ
+    fig = fig_group_pl()
+    embed_figure(slide, fig, Inches(0.3), Inches(1.1), Inches(6.2), Inches(3.1))
+
+    # 右：P&L表
+    hdrs = ["ブランド", "月次売上/店", "利益率", "1店月次利益", "目標店舗", "グループ月次利益"]
     rows = [
-        ["だし 然", "330万円", "20店", "2,200万円＋"],
-        ["肉酒場 然", "200万円", "5店", "1,000万円"],
-        ["蕎麦 然", "132万円", "30店", "1,500万円＋"],
-        ["SNS事業部", "83万円", "─", "83万円＋"],
-        ["合計（安定期）", "─", "55店", "4,783万円〜"],
+        ["だし 然", "960万円", "15%", "144万円", "20店", "2,880万円"],
+        ["肉酒場 然", "675万円", "18%", "120万円", "5店", "600万円"],
+        ["蕎麦 然", "480万円", "12.5%", "60万円", "30店", "1,800万円"],
+        ["SNS事業部", "─", "─", "83万円", "─", "83万円"],
+        ["合計（安定期）", "─", "─", "─", "55店", "5,363万円〜"],
     ]
-    table(slide, hdrs, rows, Inches(0.3), Inches(1.1), Inches(7.5), Inches(3.0), font_size=11)
-
-    # 右：ロイヤルティスケールグラフ
-    fig = fig_royalty_scale()
-    embed_figure(slide, fig, Inches(7.8), Inches(1.1), Inches(5.2), Inches(3.0))
+    table(slide, hdrs, rows, Inches(6.5), Inches(1.1), Inches(6.5), Inches(3.1), font_size=10)
 
     # ポイント
     points = [
-        "FCロイヤルティはFC40店規模で月1,709万円のストック収益",
-        "直営利益＋FCロイヤルティの二重収益構造でリスク分散",
-        "SNS事業部はグループ全店のSNS内製→広告費年300万削減",
-        "「然カード」共通会員でリピート率向上→LTV最大化",
+        "Y1 グループ月次売上合計：約2,115万円（利益率約15%、月次利益324万円）",
+        "FCロイヤルティはFC40店規模で月1,296万円のストック収益（安定成長）",
+        "成長フェーズ（Y3〜）で利益率が改善：規模の経済＋仕入共通化",
+        "直営利益＋FCロイヤルティの二重収益でリスク分散",
     ]
     section_box(slide, "収益構造のポイント", points,
-                Inches(0.3), Inches(4.3), Inches(12.7), ACCENT)
+                Inches(0.3), Inches(4.4), Inches(12.7), ACCENT)
 
 
 def slide_11_funding(prs):
@@ -777,32 +813,33 @@ def slide_11_funding(prs):
     add_rect(slide, Inches(0.3), Inches(1.1), Inches(4.5), Inches(1.3), ACCENT)
     txt(slide, "第1回 調達目標", Inches(0.4), Inches(1.15), Inches(4.3), Inches(0.4),
         size=13, color=WHITE)
-    txt(slide, "5,000万円", Inches(0.4), Inches(1.55), Inches(4.3), Inches(0.75),
+    txt(slide, "3,000万円", Inches(0.4), Inches(1.55), Inches(4.3), Inches(0.75),
         size=38, bold=True, color=GOLD, align=PP_ALIGN.CENTER)
 
     add_rect(slide, Inches(5.1), Inches(1.1), Inches(7.9), Inches(1.3), LIGHT_BG)
     txt(slide, "調達方法：日本政策金融公庫 ＋ エンジェル投資家",
         Inches(5.2), Inches(1.35), Inches(7.7), Inches(0.5),
         size=15, bold=True, color=ACCENT)
-    txt(slide, "第2回（Y2〜3）：2〜3億円  /  VC・事業会社提携  /  関西展開・FC加速",
+    txt(slide, "第2回（Y2〜3）：1〜2億円  /  VC・事業会社提携  /  FC加速・関西展開",
         Inches(5.2), Inches(1.85), Inches(7.7), Inches(0.4),
         size=11, color=TEXT_COLOR)
 
     hdrs = ["用途", "金額", "内訳"]
     rows = [
-        ["だし 然 1号店 開業費", "3,000万円", "内装1,375万＋厨房450万＋敷金＋運転資金"],
-        ["蕎麦 然 1号店 開業費", "930万円", "内装400万＋設備200万＋保証金＋運転資金"],
-        ["人材採用・研修費", "500万円", "店長・料理長採用・マニュアル構築"],
-        ["運転資金・マーケ費", "570万円", "グループ管理・SNS・広告・オープン販促"],
-        ["合計", "5,000万円", ""],
+        ["だし 然 1号店 開業費", "2,000万円", "内装900万＋厨房450万＋敷金＋運転資金（居抜き活用）"],
+        ["蕎麦 然 1号店 開業費", "700万円", "内装350万＋設備180万＋保証金＋初期運転資金"],
+        ["人材採用・研修費", "200万円", "店長・料理長採用・マニュアル構築"],
+        ["運転資金・マーケ費", "100万円", "グループ管理・SNS・広告・オープン販促"],
+        ["合計", "3,000万円", ""],
     ]
     table(slide, hdrs, rows, Inches(0.3), Inches(2.6), Inches(12.7), Inches(2.8),
           hdr_color=ACCENT, font_size=11)
 
     multi_txt(slide,
         ["■ 投資家へのリターンイメージ",
-         "・Y3以降：配当原資となるEBITDA 1.8億円（グループ月商6,000万円）",
-         "・Y5：年商20億円・EBITDA 6億円  →  EXIT（M&A or IPO）を視野に",
+         "・Y1〜2：初期投資回収フェーズ。各店舗の安定稼働と収益基盤の構築に集中",
+         "・Y3以降：FCスケールで利益率が改善。EBITDA1.8億円（月商6,000万）で成長が加速",
+         "・Y5：年商20億円・EBITDA6億円  →  EXIT（M&A or IPO）を視野に",
          "・FCロイヤルティ収入はストック型のため、EXIT評価倍率向上に寄与"],
         Inches(0.3), Inches(5.6), Inches(12.7), Inches(1.6),
         size=11, color=TEXT_COLOR)
