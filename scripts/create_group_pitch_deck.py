@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 """
-然グループ 統合ピッチデッキ生成スクリプト
+然グループ 統合ピッチデッキ（強化版）生成スクリプト
+明日の打ち合わせ用 - ブランドカラー・財務強化・競合優位性対応
 """
 
 import os
+import io
 from pathlib import Path
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import numpy as np
 from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
 from pptx.dml.color import RGBColor
@@ -12,678 +19,870 @@ from pptx.enum.text import PP_ALIGN
 
 # ─── 定数 ───────────────────────────────────────────────
 OUTPUT_DIR = Path("/home/user/test-repo/zen/07_融資・投資家資料")
-OUTPUT_FILE = OUTPUT_DIR / "然グループ_統合ピッチデッキ.pptx"
+OUTPUT_FILE = OUTPUT_DIR / "然グループ_統合ピッチデッキ_強化版.pptx"
 
 FONT_NAME = "IPAGothic"
 SLIDE_W = Inches(13.33)
 SLIDE_H = Inches(7.5)
 
-BG_COLOR   = RGBColor(0xFA, 0xFA, 0xF8)
-ACCENT     = RGBColor(0x2C, 0x4A, 0x3E)
-GOLD       = RGBColor(0x8B, 0x69, 0x14)
+# グループカラー（ロゴ準拠）
+BG_COLOR   = RGBColor(0xFA, 0xFA, 0xF6)
+ACCENT     = RGBColor(0x2C, 0x4A, 0x3E)   # 深緑（グループ共通）
+GOLD       = RGBColor(0xC4, 0x9A, 0x22)   # ゴールド（出汁然・ロゴ準拠）
+DARK_RED   = RGBColor(0x8B, 0x20, 0x20)   # ダークレッド（肉酒場然）
+NAVY       = RGBColor(0x1A, 0x2A, 0x4A)   # ネイビー（蕎麦然）
 TEXT_COLOR = RGBColor(0x1A, 0x1A, 0x1A)
 WHITE      = RGBColor(0xFF, 0xFF, 0xFF)
+LIGHT_BG   = RGBColor(0xF0, 0xEE, 0xE8)
 
-HEADER_H = Inches(1.0)
+# matplotlib用カラー
+MPL_GREEN   = "#2C4A3E"
+MPL_GOLD    = "#C49A22"
+MPL_RED     = "#8B2020"
+MPL_NAVY    = "#1A2A4A"
+MPL_LIGHT   = "#F0EEE8"
+
+HEADER_H = Inches(0.95)
 
 # ─── ヘルパー関数 ────────────────────────────────────────
 
-def set_bg(slide, prs):
+def set_bg(slide, color=None):
     bg = slide.background
     fill = bg.fill
     fill.solid()
-    fill.fore_color.rgb = BG_COLOR
+    fill.fore_color.rgb = color if color else BG_COLOR
 
 
-def add_header_band(slide):
-    shape = slide.shapes.add_shape(
-        1,
-        Inches(0), Inches(0),
-        SLIDE_W, HEADER_H
-    )
+def add_rect(slide, l, t, w, h, color, line=False):
+    shape = slide.shapes.add_shape(1, l, t, w, h)
     shape.fill.solid()
-    shape.fill.fore_color.rgb = ACCENT
-    shape.line.fill.background()
+    shape.fill.fore_color.rgb = color
+    if not line:
+        shape.line.fill.background()
     return shape
 
 
-def add_title_in_header(slide, title_text, font_size=28):
-    txBox = slide.shapes.add_textbox(
-        Inches(0.3), Inches(0.1),
-        Inches(12.5), HEADER_H - Inches(0.1)
-    )
+def add_header_band(slide, title, color=None):
+    c = color if color else ACCENT
+    add_rect(slide, 0, 0, SLIDE_W, HEADER_H, c)
+    txBox = slide.shapes.add_textbox(Inches(0.4), Inches(0.1), Inches(12), HEADER_H - Inches(0.1))
     tf = txBox.text_frame
     tf.word_wrap = False
     p = tf.paragraphs[0]
     run = p.add_run()
-    run.text = title_text
+    run.text = title
     run.font.name = FONT_NAME
-    run.font.size = Pt(font_size)
+    run.font.size = Pt(26)
     run.font.color.rgb = WHITE
     run.font.bold = True
     p.alignment = PP_ALIGN.LEFT
-    return txBox
 
 
-def add_textbox(slide, left, top, width, height, text, font_size=14,
-                color=None, bold=False, align=PP_ALIGN.LEFT, wrap=True):
+def txt(slide, text, l, t, w, h, size=14, color=None, bold=False,
+        align=PP_ALIGN.LEFT, wrap=True, italic=False):
     if color is None:
         color = TEXT_COLOR
-    txBox = slide.shapes.add_textbox(left, top, width, height)
+    txBox = slide.shapes.add_textbox(l, t, w, h)
     tf = txBox.text_frame
     tf.word_wrap = wrap
     p = tf.paragraphs[0]
+    p.alignment = align
     run = p.add_run()
     run.text = text
     run.font.name = FONT_NAME
-    run.font.size = Pt(font_size)
+    run.font.size = Pt(size)
     run.font.color.rgb = color
     run.font.bold = bold
-    p.alignment = align
+    run.font.italic = italic
     return txBox
 
 
-def add_multiline_textbox(slide, left, top, width, height, lines,
-                           font_size=14, color=None, bold=False,
-                           align=PP_ALIGN.LEFT):
+def multi_txt(slide, lines, l, t, w, h, size=13, color=None,
+              bold=False, align=PP_ALIGN.LEFT, spacing=None):
     if color is None:
         color = TEXT_COLOR
-    txBox = slide.shapes.add_textbox(left, top, width, height)
+    txBox = slide.shapes.add_textbox(l, t, w, h)
     tf = txBox.text_frame
     tf.word_wrap = True
     for i, line in enumerate(lines):
-        if i == 0:
-            p = tf.paragraphs[0]
-        else:
-            p = tf.add_paragraph()
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.alignment = align
+        if spacing:
+            p.space_before = Pt(spacing)
         run = p.add_run()
         run.text = line
         run.font.name = FONT_NAME
-        run.font.size = Pt(font_size)
+        run.font.size = Pt(size)
         run.font.color.rgb = color
         run.font.bold = bold
-        p.alignment = align
-    return txBox
 
 
-def add_simple_table(slide, left, top, width, rows_data, col_widths=None,
-                     header_bg=None, font_size=12):
-    if header_bg is None:
-        header_bg = ACCENT
-    n_rows = len(rows_data)
-    n_cols = len(rows_data[0]) if rows_data else 1
-    row_h = Inches(0.45)
-    table = slide.shapes.add_table(n_rows, n_cols, left, top,
-                                   width, row_h * n_rows).table
-    if col_widths:
-        for ci, cw in enumerate(col_widths):
-            table.columns[ci].width = cw
+def table(slide, headers, rows, l, t, w, h, hdr_color=None, font_size=11):
+    if hdr_color is None:
+        hdr_color = ACCENT
+    n_rows = len(rows) + 1
+    n_cols = len(headers)
+    row_h = h // n_rows
+    tbl = slide.shapes.add_table(n_rows, n_cols, l, t, w, h).table
+    col_w = w // n_cols
+    for i in range(n_cols):
+        tbl.columns[i].width = col_w
 
-    for ri, row in enumerate(rows_data):
-        for ci, cell_text in enumerate(row):
-            cell = table.cell(ri, ci)
-            cell.text = str(cell_text)
-            tf = cell.text_frame
-            for para in tf.paragraphs:
-                for run in para.runs:
-                    run.font.name = FONT_NAME
-                    run.font.size = Pt(font_size)
-                    if ri == 0:
-                        run.font.color.rgb = WHITE
-                        run.font.bold = True
-                    else:
-                        run.font.color.rgb = TEXT_COLOR
-                para.alignment = PP_ALIGN.CENTER
-            fill = cell.fill
-            fill.solid()
-            if ri == 0:
-                fill.fore_color.rgb = header_bg
-            elif ri % 2 == 0:
-                fill.fore_color.rgb = RGBColor(0xF0, 0xF0, 0xED)
-            else:
-                fill.fore_color.rgb = WHITE
-    return table
+    for ci, hdr in enumerate(headers):
+        cell = tbl.cell(0, ci)
+        cell.fill.solid()
+        cell.fill.fore_color.rgb = hdr_color
+        p = cell.text_frame.paragraphs[0]
+        p.alignment = PP_ALIGN.CENTER
+        run = p.add_run()
+        run.text = hdr
+        run.font.name = FONT_NAME
+        run.font.size = Pt(font_size)
+        run.font.bold = True
+        run.font.color.rgb = WHITE
 
-
-def slide_header(slide, prs, title):
-    set_bg(slide, prs)
-    add_header_band(slide)
-    add_title_in_header(slide, title)
+    for ri, row in enumerate(rows):
+        bg = LIGHT_BG if ri % 2 == 0 else WHITE
+        for ci, val in enumerate(row):
+            cell = tbl.cell(ri + 1, ci)
+            cell.fill.solid()
+            cell.fill.fore_color.rgb = bg
+            p = cell.text_frame.paragraphs[0]
+            p.alignment = PP_ALIGN.CENTER
+            run = p.add_run()
+            run.text = str(val)
+            run.font.name = FONT_NAME
+            run.font.size = Pt(font_size)
+            run.font.color.rgb = TEXT_COLOR
 
 
-# ─── スライド生成 ────────────────────────────────────────
+def embed_figure(slide, fig, l, t, w, h):
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=150, bbox_inches="tight",
+                facecolor=fig.get_facecolor())
+    buf.seek(0)
+    slide.shapes.add_picture(buf, l, t, w, h)
+    plt.close(fig)
 
-def make_slide_01_cover(prs):
+
+def kpi_box(slide, value, label, l, t, w, h, color=None):
+    c = color if color else ACCENT
+    add_rect(slide, l, t, w, h, c)
+    txt(slide, value, l, t + Inches(0.08), w, Inches(0.65),
+        size=30, bold=True, color=GOLD, align=PP_ALIGN.CENTER)
+    txt(slide, label, l, t + Inches(0.68), w, Inches(0.38),
+        size=10, color=WHITE, align=PP_ALIGN.CENTER)
+
+
+def section_box(slide, title, items, l, t, w, title_color=None):
+    c = title_color if title_color else ACCENT
+    add_rect(slide, l, t, w, Inches(0.38), c)
+    txt(slide, title, l + Inches(0.1), t + Inches(0.04), w - Inches(0.2), Inches(0.32),
+        size=12, bold=True, color=WHITE)
+    y = t + Inches(0.42)
+    for item in items:
+        txt(slide, "▸ " + item, l + Inches(0.1), y, w - Inches(0.2), Inches(0.38),
+            size=11, color=TEXT_COLOR)
+        y += Inches(0.38)
+
+
+def blank(prs, dark=False):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_bg(slide, prs)
-
-    shape = slide.shapes.add_shape(
-        1, Inches(0), Inches(6.5), SLIDE_W, Inches(1.0)
-    )
-    shape.fill.solid()
-    shape.fill.fore_color.rgb = ACCENT
-    shape.line.fill.background()
-
-    add_textbox(slide, Inches(0.5), Inches(1.0), Inches(4), Inches(4),
-                "然", font_size=200, color=ACCENT, bold=True,
-                align=PP_ALIGN.CENTER)
-
-    add_textbox(slide, Inches(4.5), Inches(1.8), Inches(8.5), Inches(1.2),
-                "然グループ", font_size=40, color=ACCENT, bold=True)
-
-    add_textbox(slide, Inches(4.5), Inches(2.8), Inches(8.5), Inches(1.0),
-                "事業説明資料", font_size=32, color=TEXT_COLOR, bold=True)
-
-    add_textbox(slide, Inches(4.5), Inches(3.9), Inches(8.5), Inches(0.6),
-                "2026年6月", font_size=18, color=GOLD)
-
-    add_textbox(slide, Inches(4.5), Inches(4.5), Inches(8.5), Inches(0.5),
-                "然グループ 事業企画室", font_size=14, color=TEXT_COLOR)
-
-    add_textbox(slide, Inches(0.5), Inches(6.55), Inches(12), Inches(0.8),
-                "Confidential  --  然グループ Internal Document",
-                font_size=11, color=WHITE, align=PP_ALIGN.CENTER)
+    set_bg(slide, ACCENT if dark else None)
+    return slide
 
 
-def make_slide_02_vision(prs):
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    slide_header(slide, prs, "グループビジョン")
+# ─── グラフ生成 ───────────────────────────────────────────
 
-    add_textbox(slide, Inches(1), Inches(1.2), Inches(11), Inches(1.0),
-                "食の全シーンに、然を。",
-                font_size=36, color=ACCENT, bold=True, align=PP_ALIGN.CENTER)
+def fig_growth_chart():
+    """5カ年 月商推移グラフ"""
+    fig, ax = plt.subplots(figsize=(7, 3.8))
+    fig.patch.set_facecolor(MPL_LIGHT)
+    ax.set_facecolor(MPL_LIGHT)
 
-    add_textbox(slide, Inches(1.5), Inches(2.3), Inches(10), Inches(0.6),
-                "日本の「だし・発酵・素材」文化を現代の食卓とビジネスに再定義する",
-                font_size=16, color=GOLD, align=PP_ALIGN.CENTER)
+    years = ["Y1\n2026", "Y2\n2027", "Y3\n2028", "Y4\n2029", "Y5\n2030"]
+    niku  = [300, 500,  600,  800,  1000]
+    dashi = [600, 1500, 3000, 5000, 7000]
+    soba  = [300, 1000, 2400, 4200, 6000]
+    sns   = [0,   0,    168,  500,  1000]
 
-    icons = [
-        ("[ 食体験 ]", "本物のだし・発酵・肉文化を\n直営店舗で提供"),
-        ("[ フランチャイズ ]", "蕎麦然・だし然を軸とした\n全国展開モデル"),
-        ("[ SNS・コンサル ]", "飲食特化のSNS支援で\nブランドと収益を拡大"),
+    x = np.arange(len(years))
+    w = 0.18
+    ax.bar(x - 1.5*w, niku,  w, label="肉酒場 然", color=MPL_RED,   alpha=0.9)
+    ax.bar(x - 0.5*w, dashi, w, label="だし 然",   color=MPL_GOLD,  alpha=0.9)
+    ax.bar(x + 0.5*w, soba,  w, label="蕎麦 然",   color=MPL_NAVY,  alpha=0.9)
+    ax.bar(x + 1.5*w, sns,   w, label="SNS事業部", color=MPL_GREEN, alpha=0.9)
+
+    totals = [n+d+s+sn for n,d,s,sn in zip(niku,dashi,soba,sns)]
+    for xi, tot in zip(x, totals):
+        ax.text(xi, tot + 80, f"{tot:,}万", ha="center", va="bottom",
+                fontsize=8, color=MPL_GREEN, fontweight="bold",
+                fontfamily="IPAGothic")
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(years, fontfamily="IPAGothic", fontsize=10)
+    ax.set_ylabel("月商（万円）", fontfamily="IPAGothic", fontsize=9)
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{int(v):,}"))
+    ax.legend(prop={"family": "IPAGothic", "size": 9}, loc="upper left")
+    ax.spines[["top","right"]].set_visible(False)
+    ax.set_title("グループ月商推移（5カ年）", fontfamily="IPAGothic",
+                 fontsize=12, color=MPL_GREEN, fontweight="bold", pad=10)
+    fig.tight_layout()
+    return fig
+
+
+def fig_pl_chart():
+    """簡易PL棒グラフ（だし 然 1店舗モデル）"""
+    fig, ax = plt.subplots(figsize=(5.5, 3.5))
+    fig.patch.set_facecolor(MPL_LIGHT)
+    ax.set_facecolor(MPL_LIGHT)
+
+    labels = ["売上", "原価", "人件費", "家賃", "その他", "営業利益"]
+    values = [960, -290, -190, -75, -65, 340]
+    colors = [MPL_GOLD if v > 0 else ("#C0392B" if i < 5 else MPL_GREEN)
+              for i, v in enumerate(values)]
+    colors[-1] = MPL_GREEN
+
+    bars = ax.bar(labels, [abs(v) for v in values], color=colors, alpha=0.9, width=0.6)
+    for bar, val in zip(bars, values):
+        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 5,
+                f"{val:+,}万", ha="center", va="bottom",
+                fontsize=9, fontfamily="IPAGothic", fontweight="bold",
+                color=MPL_GREEN if val > 0 else "#C0392B")
+
+    ax.set_ylabel("金額（万円/月）", fontfamily="IPAGothic", fontsize=9)
+    ax.set_title("だし 然 月次P&L（1店舗）", fontfamily="IPAGothic",
+                 fontsize=11, color=MPL_GOLD, fontweight="bold")
+    ax.spines[["top","right"]].set_visible(False)
+    ax.set_xticklabels(labels, fontfamily="IPAGothic", fontsize=9)
+    fig.tight_layout()
+    return fig
+
+
+def fig_recovery_chart():
+    """投資回収シミュレーション"""
+    fig, ax = plt.subplots(figsize=(5.5, 3.5))
+    fig.patch.set_facecolor(MPL_LIGHT)
+    ax.set_facecolor(MPL_LIGHT)
+
+    months = list(range(0, 25))
+    dashi_cum = []
+    soba_cum = []
+    init_dashi = -3000
+    init_soba = -930
+
+    for m in months:
+        if m == 0:
+            dashi_cum.append(init_dashi)
+            soba_cum.append(init_soba)
+        else:
+            profit_d = 130 if m <= 3 else (200 if m <= 6 else (290 if m <= 12 else 330))
+            profit_s = 50 if m <= 3 else (90 if m <= 6 else 130)
+            dashi_cum.append(dashi_cum[-1] + profit_d)
+            soba_cum.append(soba_cum[-1] + profit_s)
+
+    ax.plot(months, dashi_cum, color=MPL_GOLD, linewidth=2.5, label="だし 然（初期投資3,000万）", marker="o", markersize=3)
+    ax.plot(months, soba_cum, color=MPL_NAVY, linewidth=2.5, label="蕎麦 然（初期投資930万）", marker="s", markersize=3)
+    ax.axhline(0, color=MPL_RED, linestyle="--", linewidth=1.5, alpha=0.7)
+    ax.fill_between(months, 0, [max(0, v) for v in dashi_cum], alpha=0.1, color=MPL_GOLD)
+    ax.fill_between(months, 0, [max(0, v) for v in soba_cum], alpha=0.1, color=MPL_NAVY)
+
+    ax.set_xlabel("経過月数", fontfamily="IPAGothic", fontsize=9)
+    ax.set_ylabel("累計損益（万円）", fontfamily="IPAGothic", fontsize=9)
+    ax.set_title("投資回収シミュレーション", fontfamily="IPAGothic",
+                 fontsize=11, color=MPL_GREEN, fontweight="bold")
+    ax.legend(prop={"family": "IPAGothic", "size": 8})
+    ax.spines[["top","right"]].set_visible(False)
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{int(v):,}"))
+    fig.tight_layout()
+    return fig
+
+
+def fig_competitive_map():
+    """競合ポジショニングマップ"""
+    fig, ax = plt.subplots(figsize=(5, 4))
+    fig.patch.set_facecolor(MPL_LIGHT)
+    ax.set_facecolor(MPL_LIGHT)
+
+    competitors = [
+        ("だし 然", 4.0, 3.5, MPL_GOLD, 120, True),
+        ("肉酒場 然", 4.5, 4.2, MPL_RED, 120, True),
+        ("蕎麦 然", 2.5, 4.8, MPL_NAVY, 120, True),
+        ("茅乃舎", 4.5, 1.5, "gray", 80, False),
+        ("一蘭", 2.0, 2.8, "gray", 80, False),
+        ("チェーン居酒屋", 1.5, 3.5, "gray", 80, False),
+        ("高級和食", 5.0, 1.0, "gray", 80, False),
     ]
-    for i, (title, body) in enumerate(icons):
-        left = Inches(0.5 + i * 4.3)
-        box = slide.shapes.add_shape(
-            1, left, Inches(3.2), Inches(3.9), Inches(3.2)
-        )
-        box.fill.solid()
-        box.fill.fore_color.rgb = RGBColor(0xE8, 0xF0, 0xED)
-        box.line.color.rgb = ACCENT
 
-        add_textbox(slide, left + Inches(0.1), Inches(3.3),
-                    Inches(3.7), Inches(0.6),
-                    title, font_size=16, color=ACCENT, bold=True,
-                    align=PP_ALIGN.CENTER)
-        add_multiline_textbox(slide, left + Inches(0.2), Inches(4.0),
-                              Inches(3.5), Inches(2.0),
-                              body.split("\n"), font_size=13,
-                              align=PP_ALIGN.CENTER)
+    for name, x, y, color, size, bold in competitors:
+        ax.scatter(x, y, s=size, color=color, alpha=0.85, zorder=3)
+        ax.annotate(name, (x, y), textcoords="offset points",
+                    xytext=(8, 4), fontfamily="IPAGothic", fontsize=8,
+                    fontweight="bold" if bold else "normal",
+                    color=color if bold else "gray")
+
+    ax.set_xlim(0, 5.5)
+    ax.set_ylim(0, 5.5)
+    ax.set_xlabel("素材・体験へのこだわり →", fontfamily="IPAGothic", fontsize=9)
+    ax.set_ylabel("FC展開・スケーラビリティ →", fontfamily="IPAGothic", fontsize=9)
+    ax.set_title("競合ポジショニングマップ", fontfamily="IPAGothic",
+                 fontsize=11, color=MPL_GREEN, fontweight="bold")
+    ax.axvline(2.75, color="lightgray", linestyle="--", alpha=0.5)
+    ax.axhline(2.75, color="lightgray", linestyle="--", alpha=0.5)
+    ax.spines[["top","right"]].set_visible(False)
+    fig.tight_layout()
+    return fig
 
 
-def make_slide_03_market(prs):
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    slide_header(slide, prs, "市場機会")
+def fig_royalty_scale():
+    """FCロイヤルティ収入スケール"""
+    fig, ax = plt.subplots(figsize=(5.5, 3.2))
+    fig.patch.set_facecolor(MPL_LIGHT)
+    ax.set_facecolor(MPL_LIGHT)
 
-    nums = [
-        ("25兆円", "国内外食産業市場規模", Inches(0.4)),
-        ("4.3兆円", "インバウンド消費（2025年）", Inches(4.5)),
-        ("急拡大", "健康・発酵食品トレンド", Inches(8.6)),
+    fc_count = [5, 10, 15, 20, 25, 30, 40]
+    dashi_r  = [c * 960 * 0.03 for c in fc_count]
+    soba_r   = [c * 348 * 0.04 for c in fc_count]
+    total_r  = [d + s for d, s in zip(dashi_r, soba_r)]
+
+    ax.fill_between(fc_count, dashi_r, alpha=0.6, color=MPL_GOLD, label="だし 然 ロイヤルティ")
+    ax.fill_between(fc_count, soba_r, alpha=0.6, color=MPL_NAVY, label="蕎麦 然 ロイヤルティ")
+    ax.plot(fc_count, total_r, color=MPL_GREEN, linewidth=2.5, marker="o", markersize=4, label="合計")
+
+    for x, y in zip(fc_count, total_r):
+        if x in [10, 20, 40]:
+            ax.annotate(f"{int(y):,}万", (x, y), textcoords="offset points",
+                        xytext=(4, 6), fontsize=8, fontfamily="IPAGothic",
+                        color=MPL_GREEN, fontweight="bold")
+
+    ax.set_xlabel("FC店舗数", fontfamily="IPAGothic", fontsize=9)
+    ax.set_ylabel("月次ロイヤルティ収入（万円）", fontfamily="IPAGothic", fontsize=9)
+    ax.set_title("FCスケールによるロイヤルティ収入", fontfamily="IPAGothic",
+                 fontsize=10, color=MPL_GREEN, fontweight="bold")
+    ax.legend(prop={"family": "IPAGothic", "size": 8})
+    ax.spines[["top","right"]].set_visible(False)
+    fig.tight_layout()
+    return fig
+
+
+# ─── スライド生成 ─────────────────────────────────────────
+
+def slide_01_cover(prs):
+    slide = blank(prs)
+    # 左帯
+    add_rect(slide, 0, 0, Inches(4.5), SLIDE_H, ACCENT)
+    # 然 大文字
+    txt(slide, "然", Inches(0), Inches(0.5), Inches(4.5), Inches(4.5),
+        size=200, bold=True, color=GOLD, align=PP_ALIGN.CENTER)
+    txt(slide, "ZEN BRAND", Inches(0), Inches(4.8), Inches(4.5), Inches(0.5),
+        size=14, color=LIGHT_BG, align=PP_ALIGN.CENTER, italic=True)
+    # 右側
+    txt(slide, "然グループ", Inches(5), Inches(1.2), Inches(7.8), Inches(1.2),
+        size=46, bold=True, color=ACCENT)
+    txt(slide, "事業説明資料", Inches(5), Inches(2.4), Inches(7.8), Inches(0.9),
+        size=32, bold=True, color=TEXT_COLOR)
+    add_rect(slide, Inches(5), Inches(3.4), Inches(6.5), Inches(0.04), GOLD)
+    txt(slide, "食の全シーンに、然を。",
+        Inches(5), Inches(3.6), Inches(7.8), Inches(0.6),
+        size=18, color=GOLD, italic=True)
+    multi_txt(slide,
+        ["然グループ 事業企画室", "2026年7月"],
+        Inches(5), Inches(4.5), Inches(7.8), Inches(0.8),
+        size=14, color=TEXT_COLOR)
+    # ブランド3色ドット
+    for i, c in enumerate([GOLD, DARK_RED, NAVY]):
+        add_rect(slide, Inches(5 + i*0.5), Inches(5.6), Inches(0.35), Inches(0.35), c)
+    txt(slide, "だし然  ／  肉酒場然  ／  蕎麦然",
+        Inches(6.7), Inches(5.6), Inches(5), Inches(0.4),
+        size=12, color=TEXT_COLOR)
+    # フッター
+    add_rect(slide, 0, SLIDE_H - Inches(0.35), SLIDE_W, Inches(0.35), ACCENT)
+    txt(slide, "Confidential  ─  然グループ Internal Document  ─  無断転載禁止",
+        Inches(0.3), SLIDE_H - Inches(0.32), Inches(12), Inches(0.28),
+        size=9, color=WHITE, align=PP_ALIGN.CENTER)
+
+
+def slide_02_vision(prs):
+    slide = blank(prs)
+    add_header_band(slide, "グループビジョン")
+    txt(slide, "「食の全シーンに、然を。」",
+        Inches(1), Inches(1.1), Inches(11), Inches(0.9),
+        size=32, bold=True, color=ACCENT, align=PP_ALIGN.CENTER)
+    txt(slide, "日本の「だし・発酵・素材」文化を現代の食卓とビジネスに再定義する",
+        Inches(1.5), Inches(2.0), Inches(10), Inches(0.5),
+        size=15, color=GOLD, align=PP_ALIGN.CENTER, italic=True)
+
+    brands = [
+        ("然 出汁", "ZEN DASHI", "だしダイニング",
+         "出汁体験×インバウンド\nランチ定食＋体験ディナー\n客単価 1,800〜9,000円", GOLD),
+        ("然 肉と発酵", "ZEN NIKU", "炭火と発酵の居酒屋",
+         "発酵×炭火グリル\n本格居酒屋体験\n客単価 4,000〜6,000円", DARK_RED),
+        ("然 立ちそば", "ZEN SOBA", "現代的な立ち食いそば",
+         "2分提供・FC展開特化\n駅前・オフィス街\n客単価 1,500円", NAVY),
     ]
-    for num, label, left in nums:
-        add_textbox(slide, left, Inches(1.2), Inches(3.8), Inches(1.2),
-                    num, font_size=40, color=ACCENT, bold=True,
-                    align=PP_ALIGN.CENTER)
-        add_textbox(slide, left, Inches(2.3), Inches(3.8), Inches(0.5),
-                    label, font_size=12, color=GOLD, align=PP_ALIGN.CENTER)
+    for i, (name, eng, desc, body, color) in enumerate(brands):
+        lx = Inches(0.4 + i * 4.3)
+        add_rect(slide, lx, Inches(2.8), Inches(4.0), Inches(4.3), color)
+        txt(slide, name, lx, Inches(2.9), Inches(4.0), Inches(0.7),
+            size=22, bold=True, color=WHITE, align=PP_ALIGN.CENTER)
+        txt(slide, eng, lx, Inches(3.55), Inches(4.0), Inches(0.35),
+            size=10, color=WHITE, align=PP_ALIGN.CENTER, italic=True)
+        add_rect(slide, lx + Inches(0.3), Inches(3.95), Inches(3.4), Inches(0.03), WHITE)
+        txt(slide, desc, lx + Inches(0.1), Inches(4.05), Inches(3.8), Inches(0.35),
+            size=10, color=WHITE, align=PP_ALIGN.CENTER)
+        multi_txt(slide, body.split("\n"), lx + Inches(0.2), Inches(4.5),
+                  Inches(3.6), Inches(2.2), size=12, color=WHITE, align=PP_ALIGN.CENTER)
 
-    bullets = [
-        "● 国内外食産業は約25兆円規模（2025年）。コロナ禍後の回復が続き、都市部を中心に拡大中",
-        "● 訪日外国人消費は2025年に4.3兆円超。和食・発酵食品への関心が急増",
-        "● 健康志向・発酵ブームにより、だし・糀・熟成肉カテゴリの成長率は年15〜20%超",
-        "● 飲食FC市場も拡大中。低投資・高収益モデルへのニーズが加盟希望者を集める",
-        "● SNS（TikTok・Instagram）を軸とした飲食プロモーション需要が急速に拡大",
+
+def slide_03_market(prs):
+    slide = blank(prs)
+    add_header_band(slide, "市場機会  ─  なぜ今か")
+
+    kpis = [
+        ("25兆円", "国内外食産業\n市場規模", ACCENT),
+        ("4.3兆円", "インバウンド消費\n（2025年実績）", GOLD),
+        ("3,188万人", "訪日外国人数\n（過去最高水準）", DARK_RED),
+        ("68%", "健康志向食品市場\n過去5年成長率", NAVY),
     ]
-    add_multiline_textbox(slide, Inches(0.5), Inches(3.1), Inches(12.3), Inches(4.0),
-                          bullets, font_size=14)
+    for i, (val, label, color) in enumerate(kpis):
+        lx = Inches(0.3 + i * 3.2)
+        kpi_box(slide, val, label, lx, Inches(1.1), Inches(2.9), Inches(1.3), color)
+
+    left_items = [
+        "外食産業はコロナ後の回復を超え、2030年に向けて成長軌道",
+        "インバウンド旅行者の「本物の日本食体験」需要が急拡大",
+        "発酵食品・出汁・和食の健康志向は国内外で加速中",
+        "立ち食い・スタンド業態：コスパ・時短ニーズで拡大継続",
+    ]
+    right_items = [
+        "飲食FC市場：初期投資の軽さから加盟希望者が増加傾向",
+        "SNSによる集客格差が顕在化（勝者総取り化が進行）",
+        "円安継続→外国人の日本食消費単価は上昇トレンド",
+        "2030年大阪万博：関西インバウンド需要の更なる拡大",
+    ]
+    section_box(slide, "追い風トレンド（国内）", left_items,
+                Inches(0.3), Inches(2.7), Inches(6.2), ACCENT)
+    section_box(slide, "追い風トレンド（市場環境）", right_items,
+                Inches(6.8), Inches(2.7), Inches(6.2), GOLD)
+
+    txt(slide, "→ だし・発酵・素材こだわり × FC展開 × インバウンド対応 ── この3軸が同時に刺さる市場環境",
+        Inches(0.3), Inches(6.55), Inches(12.7), Inches(0.6),
+        size=12, bold=True, color=ACCENT, align=PP_ALIGN.CENTER)
 
 
-def make_slide_04_overview(prs):
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    slide_header(slide, prs, "グループ事業概要")
-
-    add_textbox(slide, Inches(0.5), Inches(1.1), Inches(12), Inches(0.4),
-                "4つの事業が連携し、食の全シーンをカバーします",
-                font_size=14, color=GOLD)
-
+def slide_04_overview(prs):
+    slide = blank(prs)
+    add_header_band(slide, "然グループ  全体像")
+    headers = ["ブランド", "業態", "客単価", "ターゲット", "展開モデル", "月次利益/店"]
     rows = [
-        ["事業", "ブランド", "業態", "客単価", "ターゲット"],
-        ["飲食①", "肉酒場 然", "居酒屋・焼肉（直営）", "4,000〜6,000円", "30〜50代 男女"],
-        ["飲食②", "だし 然", "だし料理・ランチ（FC）", "1,500〜2,500円", "20〜40代 女性・観光客"],
-        ["飲食③", "蕎麦 然", "立ち食い蕎麦（FC）", "700〜1,200円", "全年代・ビジネス層"],
-        ["デジタル", "SNS事業部", "飲食特化コンサル", "月9.8〜39.8万円", "中小飲食事業者"],
+        ["然 出汁", "出汁定食・体験ディナー", "1,800〜9,000円", "ワーカー＋インバウンド", "直営＋FC", "330万円"],
+        ["然 肉と発酵", "発酵×炭火居酒屋", "4,000〜6,000円", "20〜40代・飲み会需要", "直営中心", "200万円"],
+        ["然 立ちそば", "立ち食い蕎麦", "1,500円", "ビジネスパーソン（ランチ）", "FC特化", "132万円"],
+        ["SNS事業部", "飲食特化SNSコンサル", "月9.8〜39.8万円", "飲食店オーナー", "コンサル", "83万円"],
     ]
-    col_widths = [Inches(1.4), Inches(2.0), Inches(3.0), Inches(2.8), Inches(3.5)]
-    add_simple_table(slide, Inches(0.3), Inches(1.7), Inches(12.7), rows,
-                     col_widths=col_widths, font_size=12)
+    table(slide, headers, rows, Inches(0.3), Inches(1.1), Inches(12.7), Inches(2.5))
 
+    txt(slide, "食の時間帯フルカバー戦略",
+        Inches(0.3), Inches(3.85), Inches(4), Inches(0.4),
+        size=12, bold=True, color=ACCENT)
 
-def make_slide_05_nikunomise(prs):
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    slide_header(slide, prs, "肉酒場 然  --  フラッグシップ直営店")
-
-    sections = [
-        ("コンセプト",
-         "「発酵と肉の融合」をテーマに、糀・塩麹・味噌を活かした熟成肉料理を提供。\n"
-         "日本酒・クラフトビールとのペアリングで、大人の食体験を演出。"),
-        ("差別化ポイント",
-         "● 自社仕込みの発酵ダレ・漬けダレで他社との差別化\n"
-         "● 食材ロスを削減する全頭利用メニュー構成\n"
-         "● SNS映えする盛り付けとストーリーテリング"),
-        ("現状実績",
-         "● 現直営店舗：月商 約450万円（ランチ＋ディナー）\n"
-         "● 客単価：平均 5,200円  /  FL比率 58%\n"
-         "● リピート率：約40%（LINEミニアプリ計測）"),
-        ("月次利益目標",
-         "売上450万円  →  営業利益 約45〜60万円（利益率10〜13%）\n"
-         "旗艦店の知名度を活かし、FC事業・SNS事業へ送客"),
+    timeline = [
+        ("蕎麦 然", "11:00〜15:00 ランチ", NAVY),
+        ("だし 然", "11:30〜22:00 ランチ〜ディナー", GOLD),
+        ("肉酒場 然", "17:00〜23:00 ディナー", DARK_RED),
     ]
-    top = Inches(1.2)
-    for title, body in sections:
-        add_textbox(slide, Inches(0.5), top, Inches(12), Inches(0.35),
-                    title, font_size=14, color=ACCENT, bold=True)
-        top += Inches(0.35)
-        add_multiline_textbox(slide, Inches(0.7), top, Inches(12), Inches(0.8),
-                              body.split("\n"), font_size=13)
-        top += Inches(0.9)
+    for i, (name, time, color) in enumerate(timeline):
+        lx = Inches(0.3 + i * 4.3)
+        add_rect(slide, lx, Inches(4.35), Inches(4.0), Inches(0.55), color)
+        txt(slide, name, lx, Inches(4.38), Inches(4.0), Inches(0.32),
+            size=13, bold=True, color=WHITE, align=PP_ALIGN.CENTER)
+        txt(slide, time, lx, Inches(4.7), Inches(4.0), Inches(0.25),
+            size=9, color=WHITE, align=PP_ALIGN.CENTER)
 
+    txt(slide, "→ 全時間帯をカバーし、顧客をグループ内で回遊させる「然エコシステム」",
+        Inches(0.3), Inches(5.1), Inches(12.7), Inches(0.4),
+        size=11, bold=True, color=GOLD, align=PP_ALIGN.CENTER)
 
-def make_slide_06_dashi(prs):
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    slide_header(slide, prs, "だし 然  --  だし体験特化型FC")
-
-    add_textbox(slide, Inches(8.5), Inches(1.2), Inches(4.5), Inches(0.8),
-                "月次利益目標: 330万円",
-                font_size=20, color=GOLD, bold=True, align=PP_ALIGN.RIGHT)
-    add_textbox(slide, Inches(8.5), Inches(2.0), Inches(4.5), Inches(0.5),
-                "投資回収: 15〜18ヶ月",
-                font_size=16, color=GOLD, align=PP_ALIGN.RIGHT)
-
-    sections = [
-        ("コンセプト",
-         "本枯れ節・昆布・煮干しを軸とした「だし体験」専門店。\n"
-         "飲み比べセット・だし茶漬け・だし鍋など、だしを主役にしたメニュー展開。"),
-        ("ランチ/ディナー二毛作",
-         "● ランチ：だし茶漬け・定食（客単価1,500〜2,000円）\n"
-         "● ディナー：だし鍋・日本酒コース（客単価3,000〜4,000円）\n"
-         "● 1坪あたり売上効率を最大化する設計"),
-        ("FCモデル概要",
-         "● 加盟金：300万円  /  保証金：50万円\n"
-         "● ロイヤリティ：売上の5%\n"
-         "● 初期投資総額目安：1,500〜2,000万円（物件除く）\n"
-         "● 損益分岐点：月商 約210万円（目標月商350万円）"),
-    ]
-    top = Inches(2.6)
-    for title, body in sections:
-        add_textbox(slide, Inches(0.5), top, Inches(8), Inches(0.35),
-                    title, font_size=14, color=ACCENT, bold=True)
-        top += Inches(0.35)
-        add_multiline_textbox(slide, Inches(0.7), top, Inches(12), Inches(0.85),
-                              body.split("\n"), font_size=13)
-        top += Inches(0.95)
-
-
-def make_slide_07_soba(prs):
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    slide_header(slide, prs, "蕎麦 然  --  立ち食い蕎麦FC")
-
-    metrics = [
-        ("月次利益目標", "132万円"),
-        ("投資回収", "8〜10ヶ月"),
-        ("1日BEP", "43名"),
-    ]
-    for i, (label, val) in enumerate(metrics):
-        left = Inches(0.5 + i * 4.2)
-        box = slide.shapes.add_shape(
-            1, left, Inches(1.2), Inches(3.8), Inches(1.1)
-        )
-        box.fill.solid()
-        box.fill.fore_color.rgb = RGBColor(0xE8, 0xF0, 0xED)
-        box.line.color.rgb = ACCENT
-        add_textbox(slide, left, Inches(1.25), Inches(3.8), Inches(0.5),
-                    label, font_size=12, color=GOLD, align=PP_ALIGN.CENTER)
-        add_textbox(slide, left, Inches(1.65), Inches(3.8), Inches(0.5),
-                    val, font_size=24, color=ACCENT, bold=True,
-                    align=PP_ALIGN.CENTER)
-
-    sections = [
-        ("コンセプト",
-         "石臼挽き十割蕎麦を立ち食いスタイルで提供。\n"
-         "「本物を、早く、安く」をモットーに、駅前・商業施設での展開を想定。"),
-        ("低投資・高回転FCモデル",
-         "● 加盟金：150万円  /  保証金：30万円\n"
-         "● ロイヤリティ：売上の3%\n"
-         "● 初期投資目安：600〜900万円（物件除く）\n"
-         "● 目標月商：220万円  /  客単価：850円  /  1日目標客数：85名"),
-    ]
-    top = Inches(2.5)
-    for title, body in sections:
-        add_textbox(slide, Inches(0.5), top, Inches(12), Inches(0.35),
-                    title, font_size=14, color=ACCENT, bold=True)
-        top += Inches(0.35)
-        add_multiline_textbox(slide, Inches(0.7), top, Inches(12), Inches(0.85),
-                              body.split("\n"), font_size=13)
-        top += Inches(0.95)
-
-
-def make_slide_08_sns(prs):
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    slide_header(slide, prs, "SNS事業部  --  飲食特化デジタルコンサルティング")
-
-    add_textbox(slide, Inches(0.5), Inches(1.1), Inches(12), Inches(0.4),
-                "Year3 売上目標: 1,000万円  /  自社ブランドのSNS戦略も内製化",
-                font_size=15, color=GOLD, bold=True)
-
-    rows = [
-        ["プラン", "月額料金", "主なサービス内容", "想定クライアント"],
-        ["ライト", "9.8万円",
-         "Instagram投稿代行（週3回）ハッシュタグ戦略・月次レポート",
-         "個人店・スタートアップ"],
-        ["スタンダード", "19.8万円",
-         "Instagram＋TikTok運用 リール制作（月4本）・広告運用支援",
-         "中規模チェーン・FC加盟店"],
-        ["プレミアム", "39.8万円",
-         "全SNS統合運用＋PR企画 インフルエンサー連携・取材誘致支援",
-         "多店舗展開企業・ブランド強化"],
-    ]
-    col_widths = [Inches(1.8), Inches(1.8), Inches(5.5), Inches(3.4)]
-    add_simple_table(slide, Inches(0.3), Inches(1.7), Inches(12.7), rows,
-                     col_widths=col_widths, font_size=12)
-
-    add_multiline_textbox(slide, Inches(0.5), Inches(5.3), Inches(12), Inches(2.0),
-                          [
-                              "● 然グループ直営店・FC店を実績事例として活用し、新規クライアント獲得",
-                              "● 飲食×SNSに特化した専門チームが運営。一般デジタルエージェンシーとの差別化を実現",
-                              "● 将来的にはFC加盟店向けSNS支援パッケージとして標準化し、ロイヤリティ収入に組み込む予定",
-                          ], font_size=13)
-
-
-def make_slide_09_synergy(prs):
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    slide_header(slide, prs, "グループシナジー")
-
-    add_textbox(slide, Inches(0.5), Inches(1.1), Inches(12), Inches(0.4),
-                "4事業が相互に強化し合う「然エコシステム」",
-                font_size=16, color=ACCENT, bold=True, align=PP_ALIGN.CENTER)
-
+    # シナジー簡略
     synergies = [
-        ("共同仕入れ（だし原材料）",
-         "然グループ全店で本枯れ節・昆布などを一括購入。\n"
-         "スケールメリットでコスト削減＋品質の統一。"),
-        ("然カード（顧客囲い込み）",
-         "グループ共通ポイント「然カード」で肉酒場・だし・蕎麦の\n"
-         "クロスユースを促進。LTV向上と来店頻度アップ。"),
-        ("内製SNS支援",
-         "SNS事業部が全直営店・FC店の情報発信を担当。\n"
-         "コスト削減と一貫したブランドイメージを実現。"),
-        ("FCクロスセル",
-         "蕎麦然オーナーへだし然の複数ブランド加盟を提案。\n"
-         "1人のFCオーナーがグループ内複数ブランドを展開可能。"),
+        ("出汁共通仕入", "原価率1〜2%改善"),
+        ("然カード会員", "グループ内回遊促進"),
+        ("SNS内製", "広告費年300万削減"),
+        ("FCクロスセル", "SNS事業受注創出"),
     ]
     for i, (title, body) in enumerate(synergies):
-        row, col = divmod(i, 2)
-        left = Inches(0.4 + col * 6.5)
-        top = Inches(1.8 + row * 2.5)
-        box = slide.shapes.add_shape(
-            1, left, top, Inches(6.1), Inches(2.2)
-        )
-        box.fill.solid()
-        box.fill.fore_color.rgb = RGBColor(0xE8, 0xF0, 0xED)
-        box.line.color.rgb = ACCENT
-        add_textbox(slide, left + Inches(0.1), top + Inches(0.05),
-                    Inches(5.9), Inches(0.4),
-                    title, font_size=14, color=ACCENT, bold=True)
-        add_multiline_textbox(slide,
-                              left + Inches(0.15), top + Inches(0.5),
-                              Inches(5.8), Inches(1.6),
-                              body.split("\n"), font_size=12)
+        lx = Inches(0.3 + i * 3.2)
+        add_rect(slide, lx, Inches(5.65), Inches(3.0), Inches(1.5), ACCENT)
+        txt(slide, title, lx, Inches(5.72), Inches(3.0), Inches(0.45),
+            size=12, bold=True, color=GOLD, align=PP_ALIGN.CENTER)
+        txt(slide, body, lx, Inches(6.2), Inches(3.0), Inches(0.45),
+            size=10, color=WHITE, align=PP_ALIGN.CENTER)
 
 
-def make_slide_10_financials(prs):
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    slide_header(slide, prs, "5ヵ年財務計画")
+def slide_05_dashi(prs):
+    slide = blank(prs)
+    add_header_band(slide, "だし 然  ─  出汁体験レストラン", GOLD)
+    txt(slide, "「一杯の出汁が、今日を整える。」",
+        Inches(0.5), Inches(1.1), Inches(12), Inches(0.55),
+        size=20, bold=True, color=GOLD)
 
-    add_textbox(slide, Inches(0.5), Inches(1.1), Inches(12), Inches(0.4),
-                "Year5 グループ年商目標：20億円（直営＋FC＋SNS）",
-                font_size=18, color=GOLD, bold=True, align=PP_ALIGN.CENTER)
+    section_box(slide, "ビジネスモデル（昼夜二毛作）",
+                ["昼：出汁定食 1,600〜1,900円 ／ 地元ワーカー向け 平日22日安定集客",
+                 "夜：出汁しゃぶ・体験コース 8,000〜12,000円 ／ インバウンド向け体験型",
+                 "昆布×本枯れ節×麹発酵のオリジナルブレンド出汁が核心差別化",
+                 "25坪・34席（カウンター10席）・4ヶ国語対応・Alipay/WeChatPay導入"],
+                Inches(0.3), Inches(1.8), Inches(6.2), GOLD)
 
+    section_box(slide, "展開計画",
+                ["Phase1：東京直営 浅草・銀座・上野",
+                 "Phase2：関西FC 京都祇園・大阪道頓堀",
+                 "Phase3：20店舗（直営5＋FC15）",
+                 "Phase4：海外 台湾・シンガポール（DASHI ZEN）"],
+                Inches(6.8), Inches(1.8), Inches(6.2), ACCENT)
+
+    # P&Lグラフ
+    fig = fig_pl_chart()
+    embed_figure(slide, fig, Inches(0.3), Inches(3.8), Inches(5.8), Inches(3.3))
+
+    # KPI
+    kpis = [("月次売上", "960万円"), ("営業利益", "330万円"), ("利益率", "34%"), ("投資回収", "15〜18ヶ月")]
+    for i, (label, val) in enumerate(kpis):
+        lx = Inches(6.4 + i * 1.7)
+        add_rect(slide, lx, Inches(3.8), Inches(1.5), Inches(1.0), ACCENT)
+        txt(slide, val, lx, Inches(3.85), Inches(1.5), Inches(0.55),
+            size=18, bold=True, color=GOLD, align=PP_ALIGN.CENTER)
+        txt(slide, label, lx, Inches(4.42), Inches(1.5), Inches(0.35),
+            size=9, color=WHITE, align=PP_ALIGN.CENTER)
+
+    # FC収益
+    add_rect(slide, Inches(6.4), Inches(5.0), Inches(6.6), Inches(2.1), LIGHT_BG)
+    txt(slide, "FCモデル収益", Inches(6.5), Inches(5.05), Inches(6.4), Inches(0.4),
+        size=12, bold=True, color=ACCENT)
+    multi_txt(slide,
+        ["加盟金：300万円 ／ ロイヤルティ：売上の3%",
+         "FC初期投資：3,200万円（標準）",
+         "FC月次営業利益：約280万円",
+         "FC投資回収期間：約20ヶ月",
+         "本部ロイヤルティ収入：FC10店で月288万円"],
+        Inches(6.5), Inches(5.5), Inches(6.4), Inches(1.5),
+        size=11, color=TEXT_COLOR)
+
+
+def slide_06_niku(prs):
+    slide = blank(prs)
+    add_header_band(slide, "然 肉と発酵  ─  炭火と発酵の居酒屋", DARK_RED)
+    txt(slide, "「発酵の香りと肉煙が満ちる、大人の隠れ酒場」",
+        Inches(0.5), Inches(1.1), Inches(12), Inches(0.55),
+        size=20, bold=True, color=DARK_RED)
+
+    left_items = [
+        "発酵肉（麹漬け・味噌漬け）を核心に据えた独自メニュー",
+        "炭火グリルをオープンキッチンで「見せる」体験型設計",
+        "日本酒・焼酎との発酵ペアリングでドリンク単価向上",
+        "22〜25坪・30〜35席・客単価 4,000〜6,000円",
+        "ディナー特化・予約制で客単価を安定化",
+    ]
+    right_items = [
+        "然グループの「顔」かつ 発酵文化の発信基地",
+        "炭火・発酵器具がSNS映えコンテンツになる",
+        "常連顧客育成で口コミによる自然集客を実現",
+        "SNS事業部との連動でブランド発信を内製化",
+    ]
+    section_box(slide, "コンセプト・差別化", left_items,
+                Inches(0.3), Inches(1.8), Inches(6.2), DARK_RED)
+    section_box(slide, "戦略的位置づけ", right_items,
+                Inches(6.8), Inches(1.8), Inches(6.2), ACCENT)
+
+    kpis = [("月次売上目標", "600万円", DARK_RED),
+            ("月次営業利益", "200万円", ACCENT),
+            ("利益率", "33%", DARK_RED),
+            ("客単価", "5,000円", ACCENT)]
+    for i, (label, val, color) in enumerate(kpis):
+        lx = Inches(0.3 + i * 3.2)
+        add_rect(slide, lx, Inches(4.7), Inches(3.0), Inches(1.0), color)
+        txt(slide, val, lx, Inches(4.75), Inches(3.0), Inches(0.55),
+            size=26, bold=True, color=GOLD, align=PP_ALIGN.CENTER)
+        txt(slide, label, lx, Inches(5.35), Inches(3.0), Inches(0.32),
+            size=10, color=WHITE, align=PP_ALIGN.CENTER)
+
+    section_box(slide, "今後の展開",
+                ["2号店：東京都内（恵比寿・中目黒エリア）",
+                 "フラッグシップ店として然グループのブランド旗艦に",
+                 "将来的に大阪・福岡への直営拡大"],
+                Inches(0.3), Inches(5.95), Inches(12.7), ACCENT)
+
+
+def slide_07_soba(prs):
+    slide = blank(prs)
+    add_header_band(slide, "然 立ちそば  ─  現代的な立ち食いそばFC", NAVY)
+    txt(slide, "「2分で届く、本物の蕎麦。」",
+        Inches(0.5), Inches(1.1), Inches(12), Inches(0.55),
+        size=20, bold=True, color=NAVY)
+
+    left_items = [
+        "10坪・12スタンド・2人オペレーション",
+        "客単価1,500円・回転時間12分・稼働率80%",
+        "揚げたて天ぷら・北海道幌加内産蕎麦を使用",
+        "QR前払い・キャッシュレス100%で人件費最適化",
+        "BEP：1日43人（月商174万円）で黒字化",
+    ]
+    right_items = [
+        "FC加盟金200万円・ロイヤルティ4%",
+        "標準内装パッケージで施工期間2.5ヶ月",
+        "首都圏駅前・オフィス街から展開",
+        "目標：30店舗（直営3＋FC27）",
+    ]
+    section_box(slide, "業態設計", left_items,
+                Inches(0.3), Inches(1.8), Inches(6.2), NAVY)
+    section_box(slide, "FC展開モデル", right_items,
+                Inches(6.8), Inches(1.8), Inches(6.2), ACCENT)
+
+    # 回収シミュレーショングラフ
+    fig = fig_recovery_chart()
+    embed_figure(slide, fig, Inches(0.3), Inches(4.0), Inches(6.0), Inches(3.1))
+
+    kpis = [("月次売上", "348万円", NAVY),
+            ("月次利益", "132万円", ACCENT),
+            ("BEP", "1日43人", NAVY),
+            ("投資回収", "8〜10ヶ月", ACCENT)]
+    for i, (label, val, color) in enumerate(kpis):
+        lx = Inches(6.5 + i * 1.7)
+        add_rect(slide, lx, Inches(4.0), Inches(1.5), Inches(0.95), color)
+        txt(slide, val, lx, Inches(4.05), Inches(1.5), Inches(0.52),
+            size=17, bold=True, color=GOLD, align=PP_ALIGN.CENTER)
+        txt(slide, label, lx, Inches(4.6), Inches(1.5), Inches(0.32),
+            size=9, color=WHITE, align=PP_ALIGN.CENTER)
+
+    multi_txt(slide,
+        ["■ FC収益シミュレーション（FC1店舗）",
+         "初期投資合計：1,100万円",
+         "月次営業利益：約108万円",
+         "投資回収期間：約12ヶ月",
+         "本部ロイヤルティ：FC10店で月139万円"],
+        Inches(6.5), Inches(5.1), Inches(6.5), Inches(2.0),
+        size=11, color=TEXT_COLOR)
+
+
+def slide_08_competitive(prs):
+    slide = blank(prs)
+    add_header_band(slide, "競合優位性  ─  なぜ然グループが勝てるか")
+
+    fig = fig_competitive_map()
+    embed_figure(slide, fig, Inches(0.3), Inches(1.1), Inches(5.3), Inches(4.5))
+
+    advantages = [
+        ("① 出汁・発酵という普遍的コア",
+         "トレンドに流されない「日本食の本質」を軸に\n10年・20年後も価値が変わらない"),
+        ("② 価格帯ポートフォリオ",
+         "不況時は蕎麦然・ランチ中心で守り\n好況・インバウンドはだし然夜・肉酒場で攻める"),
+        ("③ FC×直営の二重エンジン",
+         "直営で利益を確保しながらFCでスケール\n飲食成功パターンを確実に踏む"),
+        ("④ SNS情報優位",
+         "毎日のトレンドリサーチを内製→外販できる\n唯一の飲食グループ"),
+        ("⑤ インバウンド確保",
+         "だし然がインバウンド向け体験型ディナーを担当\n円安・訪日外国人増加の波を確実に取込む"),
+    ]
+    for i, (title, body) in enumerate(advantages):
+        lx = Inches(5.9)
+        ty = Inches(1.1) + i * Inches(1.25)
+        add_rect(slide, lx, ty, Inches(7.1), Inches(1.15), LIGHT_BG)
+        add_rect(slide, lx, ty, Inches(0.08), Inches(1.15), ACCENT)
+        txt(slide, title, lx + Inches(0.18), ty + Inches(0.05),
+            Inches(6.8), Inches(0.4), size=12, bold=True, color=ACCENT)
+        txt(slide, body, lx + Inches(0.18), ty + Inches(0.48),
+            Inches(6.8), Inches(0.6), size=10, color=TEXT_COLOR)
+
+    txt(slide, "→ 「素材へのこだわり × FC展開力」が高水準で共存する競合不在のゾーン",
+        Inches(0.3), Inches(6.4), Inches(12.7), Inches(0.5),
+        size=12, bold=True, color=GOLD, align=PP_ALIGN.CENTER)
+
+
+def slide_09_5year(prs):
+    slide = blank(prs)
+    add_header_band(slide, "5カ年数値計画")
+
+    # 成長グラフ
+    fig = fig_growth_chart()
+    embed_figure(slide, fig, Inches(0.3), Inches(1.1), Inches(7.5), Inches(4.2))
+
+    # 数値表（右側）
+    hdrs = ["年度", "店舗数", "月商", "年商"]
     rows = [
-        ["年度", "直営店舗数", "FC店舗数（累計）", "月商合計（万円）", "年商合計（億円）"],
-        ["Year 1（2026）", "1", "2",  "800",    "0.96"],
-        ["Year 2（2027）", "2", "8",  "2,200",  "2.64"],
-        ["Year 3（2028）", "3", "20", "5,000",  "6.00"],
-        ["Year 4（2029）", "4", "40", "10,000", "12.00"],
-        ["Year 5（2030）", "5", "70", "17,000", "20.40"],
+        ["Y1 2026", "3店", "1,200万", "1.4億"],
+        ["Y2 2027", "9店", "3,000万", "3.6億"],
+        ["Y3 2028", "22店", "6,000万", "7.2億"],
+        ["Y4 2029", "35店", "10,000万", "12億"],
+        ["Y5 2030", "55店", "17,000万", "20億"],
     ]
-    col_widths = [Inches(2.2), Inches(2.0), Inches(2.5), Inches(2.5), Inches(2.5)]
-    add_simple_table(slide, Inches(0.65), Inches(1.7), Inches(11.7), rows,
-                     col_widths=col_widths, font_size=13)
+    table(slide, hdrs, rows, Inches(8.0), Inches(1.1), Inches(5.0), Inches(3.3), font_size=12)
 
-    add_textbox(slide, Inches(0.5), Inches(6.4), Inches(12), Inches(0.7),
-                "※ FC店舗数はだし然＋蕎麦然の合算。月商合計はロイヤリティ収入を含むグループ連結ベース。",
-                font_size=11, color=GOLD)
+    add_rect(slide, Inches(8.0), Inches(4.6), Inches(5.0), Inches(0.7), GOLD)
+    txt(slide, "Year 5 目標", Inches(8.1), Inches(4.65), Inches(4.8), Inches(0.3),
+        size=10, color=WHITE, bold=True)
+    txt(slide, "年商 20億円  /  55店舗  /  EBITDA 6億円",
+        Inches(8.1), Inches(4.95), Inches(4.8), Inches(0.35),
+        size=11, bold=True, color=WHITE, align=PP_ALIGN.CENTER)
 
-
-def make_slide_11_expansion(prs):
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    slide_header(slide, prs, "店舗展開フェーズ")
-
-    phases = [
-        ("Phase 1（2026〜2027）\n首都圏集中展開",
-         "● 東京都内（渋谷・新宿・品川・上野）を優先エリアに設定\n"
-         "● 直営2店舗 ＋ FC試験導入8店舗\n"
-         "● 成功モデルの標準化とマニュアル整備を完了"),
-        ("Phase 2（2028〜2029）\n関西・主要都市展開",
-         "● 大阪・京都・名古屋・福岡への出店\n"
-         "● 地域FCパートナー制度を導入し加速展開\n"
-         "● 40店舗体制でブランド認知を全国区へ"),
-        ("Phase 3（2030〜）\n海外展開",
-         "● 訪日客が多いアジア主要都市（バンコク・台北・シンガポール）を検討\n"
-         "● 海外マスターFC方式での展開\n"
-         "● 「JAPAN DASHI」として海外ブランド化"),
+    # マイルストーン
+    milestones = [
+        ("Y1", "だし然・蕎麦然1号店開業", GOLD),
+        ("Y2", "FC展開開始・肉酒場然2号店", DARK_RED),
+        ("Y3", "関西進出・SNS事業部外販", NAVY),
+        ("Y5", "55店舗・年商20億・EXIT準備", ACCENT),
     ]
-    for i, (title, body) in enumerate(phases):
-        left = Inches(0.3 + i * 4.3)
-        box = slide.shapes.add_shape(
-            1, left, Inches(1.2), Inches(4.1), Inches(5.8)
-        )
-        box.fill.solid()
-        if i == 0:
-            box.fill.fore_color.rgb = RGBColor(0xD0, 0xE8, 0xD8)
-        elif i == 1:
-            box.fill.fore_color.rgb = RGBColor(0xE8, 0xF0, 0xED)
-        else:
-            box.fill.fore_color.rgb = RGBColor(0xF5, 0xF0, 0xE0)
-        box.line.color.rgb = ACCENT
-
-        add_multiline_textbox(slide,
-                              left + Inches(0.1), Inches(1.3),
-                              Inches(3.9), Inches(0.9),
-                              title.split("\n"),
-                              font_size=13, color=ACCENT, bold=True)
-        add_multiline_textbox(slide,
-                              left + Inches(0.15), Inches(2.3),
-                              Inches(3.8), Inches(4.0),
-                              body.split("\n"), font_size=12)
+    for i, (year, text, color) in enumerate(milestones):
+        lx = Inches(0.3 + i * 3.2)
+        add_rect(slide, lx, Inches(5.55), Inches(3.0), Inches(1.6), color)
+        txt(slide, year, lx, Inches(5.6), Inches(3.0), Inches(0.45),
+            size=18, bold=True, color=GOLD if color != GOLD else WHITE,
+            align=PP_ALIGN.CENTER)
+        txt(slide, text, lx + Inches(0.1), Inches(6.1), Inches(2.8), Inches(0.9),
+            size=10, color=WHITE, align=PP_ALIGN.CENTER)
 
 
-def make_slide_12_revenue(prs):
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    slide_header(slide, prs, "収益モデルサマリー")
+def slide_10_revenue(prs):
+    slide = blank(prs)
+    add_header_band(slide, "収益モデルサマリー  ─  ストック収益の積み上げ")
 
-    add_textbox(slide, Inches(0.5), Inches(1.1), Inches(12), Inches(0.4),
-                "3ブランドの月次利益合計（単店ベース）とロイヤリティ収入スケール",
-                font_size=14, color=GOLD)
-
-    rows_profit = [
-        ["ブランド", "目標月商", "月次利益（単店）", "利益率"],
-        ["肉酒場 然", "450万円", "45〜60万円", "10〜13%"],
-        ["だし 然（FC）", "350万円", "330万円※", "〜94%※"],
-        ["蕎麦 然（FC）", "220万円", "132万円※", "〜60%※"],
-    ]
-    add_simple_table(slide, Inches(0.3), Inches(1.7), Inches(7.0), rows_profit,
-                     col_widths=[Inches(2.0), Inches(1.8), Inches(1.8), Inches(1.4)],
-                     font_size=12)
-
-    add_textbox(slide, Inches(0.3), Inches(4.0), Inches(7.0), Inches(0.4),
-                "※ FCはロイヤリティ収入ベース（加盟店売上×ロイヤリティ率）",
-                font_size=10, color=GOLD)
-
-    rows_royalty = [
-        ["FC店舗数", "月次ロイヤリティ収入（目安）"],
-        ["10店舗", "約100〜175万円/月"],
-        ["20店舗", "約200〜350万円/月"],
-        ["40店舗", "約400〜700万円/月"],
-        ["70店舗", "約700〜1,225万円/月"],
-    ]
-    add_simple_table(slide, Inches(7.5), Inches(1.7), Inches(5.5), rows_royalty,
-                     col_widths=[Inches(2.2), Inches(3.3)], font_size=12)
-
-    add_textbox(slide, Inches(7.5), Inches(4.8), Inches(5.5), Inches(0.4),
-                "※ だし然5%＋蕎麦然3%の平均から試算",
-                font_size=10, color=GOLD)
-
-    add_multiline_textbox(slide, Inches(0.5), Inches(5.0), Inches(12.3), Inches(2.0),
-                          [
-                              "● SNS事業部の月次収益（Year3）：約830万円（25クライアント×平均33万円）",
-                              "● グループ合計（Year3見込み）：月次1,500〜2,000万円  /  年間1.8〜2.4億円",
-                          ], font_size=13)
-
-
-def make_slide_13_fundraising(prs):
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    slide_header(slide, prs, "資金調達計画")
-
-    add_textbox(slide, Inches(0.5), Inches(1.1), Inches(12), Inches(0.6),
-                "ラウンド1：5,000万円",
-                font_size=36, color=ACCENT, bold=True, align=PP_ALIGN.CENTER)
-
+    # 左：P&L表
+    hdrs = ["ブランド", "1店月次利益", "目標店舗", "グループ月次利益"]
     rows = [
-        ["用途", "金額", "内訳・目的"],
-        ["だし 然 出店準備", "3,000万円",
-         "1〜2号店の内装・厨房設備・FCモデル確立費用"],
-        ["蕎麦 然 出店準備", "930万円",
-         "試験店舗（2店）の設備・マニュアル整備費用"],
-        ["運転資金", "1,070万円",
-         "開業後6ヶ月分の人件費・家賃・仕入れ資金"],
-        ["合計", "5,000万円", "―"],
+        ["だし 然", "330万円", "20店", "2,200万円＋"],
+        ["肉酒場 然", "200万円", "5店", "1,000万円"],
+        ["蕎麦 然", "132万円", "30店", "1,500万円＋"],
+        ["SNS事業部", "83万円", "─", "83万円＋"],
+        ["合計（安定期）", "─", "55店", "4,783万円〜"],
     ]
-    col_widths = [Inches(2.5), Inches(2.0), Inches(8.2)]
-    add_simple_table(slide, Inches(0.3), Inches(2.0), Inches(12.7), rows,
-                     col_widths=col_widths, font_size=13)
+    table(slide, hdrs, rows, Inches(0.3), Inches(1.1), Inches(7.5), Inches(3.0), font_size=11)
 
-    add_multiline_textbox(slide, Inches(0.5), Inches(5.2), Inches(12), Inches(2.0),
-                          [
-                              "【調達方法の想定】エクイティ（株式）またはコンバーティブルノートによる第三者割当増資",
-                              "【バリュエーション】Year2売上見込みを基準に協議（詳細は別紙）",
-                              "【ラウンド2以降】Year2末（2027年末）に追加調達を検討。関西展開・海外FC準備費用として2〜3億円を想定",
-                          ], font_size=13)
+    # 右：ロイヤルティスケールグラフ
+    fig = fig_royalty_scale()
+    embed_figure(slide, fig, Inches(7.8), Inches(1.1), Inches(5.2), Inches(3.0))
+
+    # ポイント
+    points = [
+        "FCロイヤルティはFC40店規模で月1,709万円のストック収益",
+        "直営利益＋FCロイヤルティの二重収益構造でリスク分散",
+        "SNS事業部はグループ全店のSNS内製→広告費年300万削減",
+        "「然カード」共通会員でリピート率向上→LTV最大化",
+    ]
+    section_box(slide, "収益構造のポイント", points,
+                Inches(0.3), Inches(4.3), Inches(12.7), ACCENT)
 
 
-def make_slide_14_risks(prs):
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    slide_header(slide, prs, "リスクと対策")
+def slide_11_funding(prs):
+    slide = blank(prs)
+    add_header_band(slide, "資金調達計画")
 
+    add_rect(slide, Inches(0.3), Inches(1.1), Inches(4.5), Inches(1.3), ACCENT)
+    txt(slide, "第1回 調達目標", Inches(0.4), Inches(1.15), Inches(4.3), Inches(0.4),
+        size=13, color=WHITE)
+    txt(slide, "5,000万円", Inches(0.4), Inches(1.55), Inches(4.3), Inches(0.75),
+        size=38, bold=True, color=GOLD, align=PP_ALIGN.CENTER)
+
+    add_rect(slide, Inches(5.1), Inches(1.1), Inches(7.9), Inches(1.3), LIGHT_BG)
+    txt(slide, "調達方法：日本政策金融公庫 ＋ エンジェル投資家",
+        Inches(5.2), Inches(1.35), Inches(7.7), Inches(0.5),
+        size=15, bold=True, color=ACCENT)
+    txt(slide, "第2回（Y2〜3）：2〜3億円  /  VC・事業会社提携  /  関西展開・FC加速",
+        Inches(5.2), Inches(1.85), Inches(7.7), Inches(0.4),
+        size=11, color=TEXT_COLOR)
+
+    hdrs = ["用途", "金額", "内訳"]
     rows = [
-        ["リスク項目", "影響度", "対策"],
-        ["食材原価高騰（円安・インフレ）",
-         "高",
-         "共同仕入れ・産地直送契約・メニュー価格の段階的見直し"],
-        ["FC加盟者の品質管理",
-         "中〜高",
-         "SV制度・月次研修・ブランド監査で基準遵守を担保"],
-        ["競合他社の類似コンセプト参入",
-         "中",
-         "然ブランドの商標登録・先行者優位・SNSによる認知拡大"],
-        ["人材不足（調理・マネジメント）",
-         "中",
-         "パート比率最適化・グループ内人材ローテーション・採用専任担当設置"],
-        ["SNS事業のクライアント離脱",
-         "低〜中",
-         "年間契約による収益安定化・飲食FC加盟店を優先クライアントに"],
+        ["だし 然 1号店 開業費", "3,000万円", "内装1,375万＋厨房450万＋敷金＋運転資金"],
+        ["蕎麦 然 1号店 開業費", "930万円", "内装400万＋設備200万＋保証金＋運転資金"],
+        ["人材採用・研修費", "500万円", "店長・料理長採用・マニュアル構築"],
+        ["運転資金・マーケ費", "570万円", "グループ管理・SNS・広告・オープン販促"],
+        ["合計", "5,000万円", ""],
     ]
-    col_widths = [Inches(3.5), Inches(1.5), Inches(7.7)]
-    add_simple_table(slide, Inches(0.3), Inches(1.3), Inches(12.7), rows,
-                     col_widths=col_widths, font_size=12)
+    table(slide, hdrs, rows, Inches(0.3), Inches(2.6), Inches(12.7), Inches(2.8),
+          hdr_color=ACCENT, font_size=11)
+
+    multi_txt(slide,
+        ["■ 投資家へのリターンイメージ",
+         "・Y3以降：配当原資となるEBITDA 1.8億円（グループ月商6,000万円）",
+         "・Y5：年商20億円・EBITDA 6億円  →  EXIT（M&A or IPO）を視野に",
+         "・FCロイヤルティ収入はストック型のため、EXIT評価倍率向上に寄与"],
+        Inches(0.3), Inches(5.6), Inches(12.7), Inches(1.6),
+        size=11, color=TEXT_COLOR)
 
 
-def make_slide_15_contact(prs):
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_bg(slide, prs)
+def slide_12_risk(prs):
+    slide = blank(prs)
+    add_header_band(slide, "リスクと対策")
 
-    shape = slide.shapes.add_shape(
-        1, Inches(0), Inches(0), SLIDE_W, Inches(2.0)
-    )
-    shape.fill.solid()
-    shape.fill.fore_color.rgb = ACCENT
-    shape.line.fill.background()
-
-    add_textbox(slide, Inches(1), Inches(0.3), Inches(11), Inches(0.8),
-                "然グループ 事業企画室",
-                font_size=32, color=WHITE, bold=True, align=PP_ALIGN.CENTER)
-    add_textbox(slide, Inches(1), Inches(1.1), Inches(11), Inches(0.6),
-                "お問い合わせ・投資家向けお申し込み",
-                font_size=16, color=RGBColor(0xCC, 0xDD, 0xCC),
-                align=PP_ALIGN.CENTER)
-
-    contact_items = [
-        ("Email",  "（担当者よりご連絡いたします）"),
-        ("Tel",    "（担当よりご案内いたします）"),
-        ("Web",    "https://zen-group.jp  （準備中）"),
-        ("所在地", "東京都（詳細はお問い合わせください）"),
+    hdrs = ["リスク", "影響度", "発生確率", "対策"]
+    rows = [
+        ["物件取得競争", "高", "中",
+         "不動産仲介との早期リレーション・複数候補常時確保"],
+        ["FC加盟店の品質低下", "高", "低",
+         "SV制度・月次研修・本部仕入れで品質統一・契約解除条項"],
+        ["インバウンド需要の変動", "中", "中",
+         "ランチ（国内需要）でベース売上確保・円安依存排除"],
+        ["人材採用難", "中", "高",
+         "SNSブランディングで「働きたい会社」化・利益還元・待遇改善"],
+        ["出汁素材の調達リスク", "低", "低",
+         "複数サプライヤーと年間契約・輸入品との組合せで安定化"],
+        ["競合参入", "中", "中",
+         "先行出店・ブランド確立・FC網を早期に張る先行者利益戦略"],
     ]
-    top = Inches(2.5)
-    for label, value in contact_items:
-        add_textbox(slide, Inches(1.5), top, Inches(2.5), Inches(0.5),
-                    label + "：", font_size=14, color=GOLD, bold=True)
-        add_textbox(slide, Inches(4.0), top, Inches(9.0), Inches(0.5),
-                    value, font_size=14, color=TEXT_COLOR)
-        top += Inches(0.7)
+    table(slide, hdrs, rows, Inches(0.3), Inches(1.1), Inches(12.7), Inches(5.5),
+          hdr_color=ACCENT, font_size=11)
 
-    add_textbox(slide, Inches(0.5), Inches(6.2), Inches(12.3), Inches(0.9),
-                "本資料の内容は機密情報です。無断複製・転用・開示はお断りいたします。"
-                "  /  (c) 2026 然グループ. All Rights Reserved.",
-                font_size=11, color=GOLD, align=PP_ALIGN.CENTER)
+
+def slide_13_contact(prs):
+    slide = blank(prs, dark=True)
+    txt(slide, "然グループ", Inches(1), Inches(1.2), Inches(11), Inches(1.5),
+        size=54, bold=True, color=WHITE, align=PP_ALIGN.CENTER)
+    txt(slide, "ZEN GROUP", Inches(1), Inches(2.7), Inches(11), Inches(0.5),
+        size=16, color=GOLD, align=PP_ALIGN.CENTER, italic=True)
+    add_rect(slide, Inches(3), Inches(3.5), Inches(7), Inches(0.04), GOLD)
+    txt(slide, "食の全シーンに、然を。",
+        Inches(1), Inches(3.7), Inches(11), Inches(0.6),
+        size=20, color=GOLD, align=PP_ALIGN.CENTER)
+
+    add_rect(slide, Inches(3), Inches(4.5), Inches(7), Inches(2.0),
+             RGBColor(0x1E, 0x35, 0x2A))
+    txt(slide, "然グループ 事業企画室",
+        Inches(3.1), Inches(4.6), Inches(6.8), Inches(0.5),
+        size=18, bold=True, color=WHITE, align=PP_ALIGN.CENTER)
+    txt(slide, "Email：＿＿＿＿＿＿＿＿＿＿＿＿＿",
+        Inches(3.1), Inches(5.15), Inches(6.8), Inches(0.45),
+        size=14, color=LIGHT_BG, align=PP_ALIGN.CENTER)
+    txt(slide, "Tel：＿＿＿＿＿＿＿＿＿",
+        Inches(3.1), Inches(5.6), Inches(6.8), Inches(0.45),
+        size=14, color=LIGHT_BG, align=PP_ALIGN.CENTER)
+    txt(slide, "本資料は機密情報を含みます。無断転載・配布を禁じます。",
+        Inches(1), Inches(6.8), Inches(11), Inches(0.4),
+        size=9, color=GOLD, align=PP_ALIGN.CENTER)
 
 
 # ─── メイン ─────────────────────────────────────────────
 
 def main():
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
     prs = Presentation()
-    prs.slide_width  = SLIDE_W
+    prs.slide_width = SLIDE_W
     prs.slide_height = SLIDE_H
 
-    make_slide_01_cover(prs)
-    make_slide_02_vision(prs)
-    make_slide_03_market(prs)
-    make_slide_04_overview(prs)
-    make_slide_05_nikunomise(prs)
-    make_slide_06_dashi(prs)
-    make_slide_07_soba(prs)
-    make_slide_08_sns(prs)
-    make_slide_09_synergy(prs)
-    make_slide_10_financials(prs)
-    make_slide_11_expansion(prs)
-    make_slide_12_revenue(prs)
-    make_slide_13_fundraising(prs)
-    make_slide_14_risks(prs)
-    make_slide_15_contact(prs)
+    slide_01_cover(prs)
+    slide_02_vision(prs)
+    slide_03_market(prs)
+    slide_04_overview(prs)
+    slide_05_dashi(prs)
+    slide_06_niku(prs)
+    slide_07_soba(prs)
+    slide_08_competitive(prs)
+    slide_09_5year(prs)
+    slide_10_revenue(prs)
+    slide_11_funding(prs)
+    slide_12_risk(prs)
+    slide_13_contact(prs)
 
-    prs.save(str(OUTPUT_FILE))
-    print("Saved: " + str(OUTPUT_FILE))
-    print("Slides: " + str(len(prs.slides)))
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    prs.save(OUTPUT_FILE)
+    print(f"Saved: {OUTPUT_FILE}")
+    print(f"Slides: {len(prs.slides)}")
 
 
 if __name__ == "__main__":
