@@ -238,7 +238,7 @@ def fig_pl_chart():
     ax.set_facecolor(MPL_LIGHT)
 
     labels = ["売上", "原価", "人件費", "家賃", "その他", "営業利益"]
-    values = [960, -290, -250, -150, -126, 144]
+    values = [960, -317, -270, -60, -169, 144]
     colors = [MPL_GOLD if v > 0 else ("#C0392B" if i < 5 else MPL_GREEN)
               for i, v in enumerate(values)]
     colors[-1] = MPL_GREEN
@@ -266,9 +266,9 @@ def fig_group_pl():
     ax.set_facecolor(MPL_LIGHT)
 
     brands = ["だし 然", "肉酒場 然", "蕎麦 然"]
-    sales   = [960, 1200, 480]
-    profits = [144, 200,   60]
-    margins = [15,  17,  12.5]
+    sales   = [960, 1200, 350]
+    profits = [144, 200,   42]
+    margins = [15,  17,   12]
     colors  = [MPL_GOLD, MPL_RED, MPL_NAVY]
 
     x = np.arange(len(brands))
@@ -400,6 +400,85 @@ def fig_royalty_scale():
     return fig
 
 
+def fig_annual_pl_chart():
+    """グループ年次売上・EBITDA推移（5カ年）"""
+    fig, ax1 = plt.subplots(figsize=(7, 3.8))
+    fig.patch.set_facecolor(MPL_LIGHT)
+    ax1.set_facecolor(MPL_LIGHT)
+
+    years  = ["Y1\n2026", "Y2\n2027", "Y3\n2028", "Y4\n2029", "Y5\n2030"]
+    sales  = [14000, 36000, 72000, 120000, 200000]
+    ebitda = [2260,  7140,  14880, 27800,  48000]
+    margin = [e/s*100 for e, s in zip(ebitda, sales)]
+
+    x = np.arange(len(years))
+    ax1.bar(x, sales, 0.5, label="売上高", color=MPL_GOLD, alpha=0.7)
+    ax1.bar(x, ebitda, 0.5, label="EBITDA", color=MPL_GREEN, alpha=0.9)
+
+    ax2 = ax1.twinx()
+    ax2.plot(x, margin, color=MPL_RED, linewidth=2.5, marker="o", markersize=5,
+             label="EBITDA率")
+    for xi, m in zip(x, margin):
+        ax2.annotate(f"{m:.0f}%", (xi, m), textcoords="offset points",
+                     xytext=(0, 8), fontsize=8, ha="center",
+                     fontfamily="IPAGothic", color=MPL_RED, fontweight="bold")
+
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(years, fontfamily="IPAGothic", fontsize=9)
+    ax1.set_ylabel("金額（万円）", fontfamily="IPAGothic", fontsize=9)
+    ax2.set_ylabel("EBITDA率（%）", fontfamily="IPAGothic", fontsize=9, color=MPL_RED)
+    ax1.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{int(v):,}"))
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(lines1 + lines2, labels1 + labels2, prop={"family": "IPAGothic", "size": 8},
+               loc="upper left")
+    ax1.spines[["top","right"]].set_visible(False)
+    ax1.set_title("グループ年次売上・EBITDA推移", fontfamily="IPAGothic",
+                  fontsize=11, color=MPL_GREEN, fontweight="bold")
+    fig.tight_layout()
+    return fig
+
+
+def fig_cashflow_chart():
+    """グループ年次キャッシュフロー"""
+    fig, ax = plt.subplots(figsize=(6.5, 3.5))
+    fig.patch.set_facecolor(MPL_LIGHT)
+    ax.set_facecolor(MPL_LIGHT)
+
+    years  = ["調達時", "Y1末", "Y2末", "Y3末", "Y4末", "Y5末"]
+    op_cf  = [0, 2260, 7140, 14880, 27800, 48000]
+    inv_cf = [-3500, -1000, -5000, -8000, -10000, -5000]
+    net    = [o + i for o, i in zip(op_cf, inv_cf)]
+    cum    = []
+    s = 3500
+    for n in net:
+        s += n
+        cum.append(s)
+
+    x = np.arange(len(years))
+    ax.bar(x, [max(0, n) for n in net], 0.5, color=MPL_GREEN, alpha=0.8, label="純CF（年次）")
+    ax.bar(x, [min(0, n) for n in net], 0.5, color=MPL_RED, alpha=0.7)
+    ax.plot(x, cum, color=MPL_GOLD, linewidth=2.5, marker="o", markersize=5, label="累計CF（資金調達後）")
+    ax.axhline(0, color="gray", linestyle="--", linewidth=1)
+
+    for xi, c in zip(x, cum):
+        if xi > 0:
+            ax.annotate(f"{int(c):,}万", (xi, c), textcoords="offset points",
+                        xytext=(0, 8), fontsize=7, ha="center",
+                        fontfamily="IPAGothic", color=MPL_GOLD, fontweight="bold")
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(years, fontfamily="IPAGothic", fontsize=9)
+    ax.set_ylabel("金額（万円）", fontfamily="IPAGothic", fontsize=9)
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{int(v):,}"))
+    ax.legend(prop={"family": "IPAGothic", "size": 8})
+    ax.spines[["top","right"]].set_visible(False)
+    ax.set_title("キャッシュフロー推移（資金調達3,500万起点）", fontfamily="IPAGothic",
+                 fontsize=10, color=MPL_GREEN, fontweight="bold")
+    fig.tight_layout()
+    return fig
+
+
 # ─── スライド生成 ─────────────────────────────────────────
 
 def slide_01_cover(prs):
@@ -508,12 +587,12 @@ def slide_03_market(prs):
 def slide_04_overview(prs):
     slide = blank(prs)
     add_header_band(slide, "然グループ  全体像")
-    headers = ["ブランド", "業態", "月次売上/店", "利益率", "展開モデル", "月次利益/店"]
+    headers = ["ブランド", "業態", "月次売上/店", "利益率", "家賃/月", "月次利益/店"]
     rows = [
-        ["然 出汁", "出汁定食・体験ディナー", "960万円", "15%", "直営＋FC", "144万円"],
-        ["然 肉と発酵", "炭火コース＋宴会居酒屋", "1,200万円", "17%", "直営中心", "200万円"],
-        ["然 立ちそば", "立ち食い蕎麦", "480万円", "12.5%", "FC特化", "60万円"],
-        ["SNS事業部", "飲食特化SNSコンサル", "月9.8〜39.8万円", "─", "コンサル", "83万円"],
+        ["然 出汁", "出汁定食・体験ディナー", "960万円", "15%", "60万円（25坪）", "144万円"],
+        ["然 肉と発酵", "炭火コース＋宴会居酒屋", "1,200万円", "17%", "80万円（38坪）", "200万円"],
+        ["然 立ちそば", "立ち食い蕎麦（8坪・小型）", "350万円", "12%", "30万円（8坪）", "42万円"],
+        ["SNS事業部", "飲食特化SNSコンサル", "月9.8〜39.8万円", "─", "─", "83万円"],
     ]
     table(slide, headers, rows, Inches(0.3), Inches(1.1), Inches(12.7), Inches(2.5))
 
@@ -565,7 +644,8 @@ def slide_05_dashi(prs):
                 ["昼：出汁定食 1,600〜1,900円 ／ 地元ワーカー向け 平日22日安定集客",
                  "夜：出汁しゃぶ・体験コース 8,000〜12,000円 ／ インバウンド向け体験型",
                  "昆布×本枯れ節×麹発酵のオリジナルブレンド出汁が核心差別化",
-                 "25坪・34席（カウンター10席）・4ヶ国語対応・Alipay/WeChatPay導入"],
+                 "25坪・34席（カウンター10席）・4ヶ国語対応・Alipay/WeChatPay導入",
+                 "【家賃】60万円/月（25坪・坪2.4万）│ 原価33% │ 人件費28%"],
                 Inches(0.3), Inches(1.8), Inches(6.2), GOLD)
 
     section_box(slide, "展開計画",
@@ -611,11 +691,11 @@ def slide_06_niku(prs):
         size=20, bold=True, color=DARK_RED)
 
     left_items = [
-        "35〜40坪・55席（個室・半個室15席含む）で宴会需要を獲得",
+        "38坪・55席（個室・半個室15席含む）で宴会需要を獲得",
         "発酵肉（麹漬け・味噌漬け）を炭火グリルで「見せる」体験型設計",
         "ディナーコース主体（8,000〜10,000円）＋平日ランチ炭火定食2,000円",
         "日本酒・焼酎の発酵ペアリングでドリンク単価を底上げ",
-        "週5日ランチ＋週7日ディナーで昼夜二毛作を実現",
+        "【家賃】80万円/月（38坪・坪2.1万）│ 原価35% │ 人件費27.5%",
     ]
     right_items = [
         "然グループの「顔」かつ 発酵文化の発信基地",
@@ -655,16 +735,17 @@ def slide_07_soba(prs):
         size=20, bold=True, color=NAVY)
 
     left_items = [
-        "10坪・12スタンド・2人オペレーション",
-        "客単価1,500円・回転時間12分・稼働率80%",
+        "8坪・8スタンド・1〜2人オペレーション（小型化）",
+        "客単価1,500円・回転時間12分・1日80〜90人集客",
         "揚げたて天ぷら・北海道幌加内産蕎麦を使用",
         "QR前払い・キャッシュレス100%で人件費最適化",
-        "BEP：1日43人（月商174万円）で黒字化",
+        "【家賃】30万円/月（8坪・坪3.75万）│ 原価33%",
     ]
     right_items = [
         "FC加盟金200万円・ロイヤルティ4%",
-        "標準内装パッケージで施工期間2.5ヶ月",
+        "標準内装パッケージで施工期間2ヶ月以内",
         "首都圏駅前・オフィス街から展開",
+        "小型化でFC初期投資を抑え加盟ハードルを下げる",
         "目標：30店舗（直営3＋FC27）",
     ]
     section_box(slide, "業態設計", left_items,
@@ -676,10 +757,10 @@ def slide_07_soba(prs):
     fig = fig_recovery_chart()
     embed_figure(slide, fig, Inches(0.3), Inches(4.0), Inches(6.0), Inches(3.1))
 
-    kpis = [("月次売上", "480万円", NAVY),
-            ("月次利益", "60万円", ACCENT),
-            ("利益率", "12.5%", NAVY),
-            ("投資回収", "15〜18ヶ月", ACCENT)]
+    kpis = [("月次売上", "350万円", NAVY),
+            ("月次利益", "42万円", ACCENT),
+            ("利益率", "12%", NAVY),
+            ("投資回収", "12〜15ヶ月", ACCENT)]
     for i, (label, val, color) in enumerate(kpis):
         lx = Inches(6.5 + i * 1.7)
         add_rect(slide, lx, Inches(4.0), Inches(1.5), Inches(0.95), color)
@@ -689,14 +770,188 @@ def slide_07_soba(prs):
             size=9, color=WHITE, align=PP_ALIGN.CENTER)
 
     multi_txt(slide,
-        ["■ FC収益シミュレーション（FC1店舗）",
-         "初期投資合計：1,100万円",
-         "月次売上：480万円",
-         "月次営業利益：約50万円（ロイヤルティ控除後）",
-         "投資回収期間：約18〜22ヶ月",
-         "本部ロイヤルティ：FC10店で月192万円（売上の4%）"],
+        ["■ FC収益シミュレーション（FC1店舗・小型8坪）",
+         "初期投資合計：500万円（居抜き活用・小型化）",
+         "月次売上：350万円",
+         "月次営業利益：約28万円（ロイヤルティ控除後）",
+         "投資回収期間：約14〜18ヶ月",
+         "本部ロイヤルティ：FC10店で月140万円（売上の4%）"],
         Inches(6.5), Inches(5.1), Inches(6.5), Inches(2.0),
         size=11, color=TEXT_COLOR)
+
+
+def slide_sns_marketing(prs):
+    slide = blank(prs)
+    add_header_band(slide, "販売・SNSマーケティング戦略")
+    txt(slide, "「SNSで集客する飲食グループ」を自ら実証し、外販へ",
+        Inches(0.5), Inches(1.1), Inches(12), Inches(0.5),
+        size=16, bold=True, color=ACCENT, align=PP_ALIGN.CENTER)
+
+    # フェーズ帯
+    phases = [
+        ("PHASE 1\n開業前3〜6ヶ月", "外部SNSコンサル起用\nスタートダッシュ", DARK_RED),
+        ("PHASE 2\nY1〜Y2", "内製移行＋毎日トレンドリサーチ\nコンテンツ量産体制", GOLD),
+        ("PHASE 3\nY3〜", "SNS事業部外販スタート\n然グループが証明した手法を商品化", ACCENT),
+    ]
+    for i, (phase, desc, color) in enumerate(phases):
+        lx = Inches(0.3 + i * 4.3)
+        add_rect(slide, lx, Inches(1.8), Inches(4.0), Inches(1.6), color)
+        multi_txt(slide, phase.split("\n"), lx, Inches(1.85), Inches(4.0), Inches(0.7),
+                  size=13, bold=True, color=WHITE, align=PP_ALIGN.CENTER)
+        multi_txt(slide, desc.split("\n"), lx, Inches(2.6), Inches(4.0), Inches(0.7),
+                  size=10, color=WHITE, align=PP_ALIGN.CENTER)
+
+    # プラットフォーム別施策
+    platforms = [
+        ("YouTube", MPL_RED,
+         ["然グループ公式チャンネル",
+          "仕込み・料理動画・代表ブログ",
+          "発酵・出汁の解説コンテンツ",
+          "→ チャンネル登録→来店転換"]),
+        ("Instagram", MPL_GOLD,
+         ["ブランド別アカウント＋統合アカウント",
+          "出汁の湯気・炭火の煙=映えコンテンツ",
+          "ストーリーズで日常・ビハインドシーン",
+          "→ フォロワーをリザーブに誘導"]),
+        ("TikTok", MPL_NAVY,
+         ["短尺料理動画・発酵解説",
+          "インバウンド向け多言語対応",
+          "ハッシュタグ戦略でバズ狙い",
+          "→ 若年層・外国人の来店促進"]),
+        ("Google / OTA", MPL_GREEN,
+         ["Googleマップ口コミ管理",
+          "食べログ・ぐるなびSEO",
+          "Booking.com / Airbnb体験登録",
+          "→ インバウンド流入確保"]),
+    ]
+    for i, (name, color, items) in enumerate(platforms):
+        lx = Inches(0.3 + i * 3.25)
+        add_rect(slide, lx, Inches(3.65), Inches(3.0), Inches(0.42), RGBColor(*bytes.fromhex(color[1:])))
+        txt(slide, name, lx, Inches(3.68), Inches(3.0), Inches(0.35),
+            size=13, bold=True, color=WHITE, align=PP_ALIGN.CENTER)
+        multi_txt(slide, items, lx + Inches(0.1), Inches(4.12), Inches(2.8), Inches(1.8),
+                  size=10, color=TEXT_COLOR)
+
+    txt(slide, "開業前コンサル費用 300万円を資金調達に組み込み済み → Y1からSNS集客を最大化",
+        Inches(0.3), Inches(6.55), Inches(12.7), Inches(0.55),
+        size=12, bold=True, color=GOLD, align=PP_ALIGN.CENTER)
+
+
+def slide_group_annual_pl(prs):
+    slide = blank(prs)
+    add_header_band(slide, "グループ 事業計画 P&L  ─  5カ年損益計画")
+
+    # 年次PL表
+    hdrs = ["", "Y1 2026", "Y2 2027", "Y3 2028", "Y4 2029", "Y5 2030"]
+    rows = [
+        ["売上高（万円）",        "14,000",  "36,000",  "72,000",  "120,000", "200,000"],
+        ["　売上原価（31%）",     "▲4,340",  "▲11,160", "▲22,320", "▲37,200", "▲62,000"],
+        ["売上総利益",            "9,660",   "24,840",  "49,680",  "82,800",  "138,000"],
+        ["　粗利率",              "69%",     "69%",     "69%",     "69%",     "69%"],
+        ["　人件費",              "▲3,500",  "▲8,500",  "▲16,000", "▲26,000", "▲42,000"],
+        ["　家賃合計",            "▲1,500",  "▲3,600",  "▲7,200",  "▲11,000", "▲17,000"],
+        ["　その他（光熱費等）",  "▲2,400",  "▲5,600",  "▲11,600", "▲18,000", "▲31,000"],
+        ["EBITDA",                "2,260",   "7,140",   "14,880",  "27,800",  "48,000"],
+        ["EBITDA率",              "16%",     "20%",     "21%",     "23%",     "24%"],
+    ]
+
+    def highlight_rows(tbl, row_indices, color):
+        for ri in row_indices:
+            for ci in range(len(hdrs)):
+                tbl.cell(ri+1, ci).fill.solid()
+                tbl.cell(ri+1, ci).fill.fore_color.rgb = color
+
+    n_rows = len(rows) + 1
+    n_cols = len(hdrs)
+    tbl_shape = slide.shapes.add_table(n_rows, n_cols, Inches(0.3), Inches(1.1), Inches(12.7), Inches(4.5))
+    tbl = tbl_shape.table
+
+    col_widths = [Inches(2.5)] + [Inches(2.04)] * 5
+    for ci, cw in enumerate(col_widths):
+        tbl.columns[ci].width = cw
+
+    for ci, h in enumerate(hdrs):
+        cell = tbl.cell(0, ci)
+        cell.fill.solid()
+        cell.fill.fore_color.rgb = ACCENT
+        p = cell.text_frame.paragraphs[0]
+        p.alignment = PP_ALIGN.CENTER
+        run = p.add_run()
+        run.text = h
+        run.font.name = FONT_NAME
+        run.font.size = Pt(11)
+        run.font.bold = True
+        run.font.color.rgb = WHITE
+
+    highlight_color_map = {
+        2: RGBColor(0xE8, 0xF4, 0xEE),
+        7: RGBColor(0xC4, 0x9A, 0x22),
+    }
+    for ri, row in enumerate(rows):
+        for ci, val in enumerate(row):
+            cell = tbl.cell(ri + 1, ci)
+            if ri == 7:
+                cell.fill.solid()
+                cell.fill.fore_color.rgb = ACCENT
+            elif ri == 2:
+                cell.fill.solid()
+                cell.fill.fore_color.rgb = RGBColor(0xE8, 0xF4, 0xEE)
+            elif ri % 2 == 0:
+                cell.fill.solid()
+                cell.fill.fore_color.rgb = LIGHT_BG
+            else:
+                cell.fill.solid()
+                cell.fill.fore_color.rgb = WHITE
+            p = cell.text_frame.paragraphs[0]
+            p.alignment = PP_ALIGN.CENTER if ci > 0 else PP_ALIGN.LEFT
+            run = p.add_run()
+            run.text = str(val)
+            run.font.name = FONT_NAME
+            run.font.size = Pt(10)
+            run.font.bold = (ri in [2, 7])
+            run.font.color.rgb = WHITE if ri == 7 else TEXT_COLOR
+
+    # グラフ
+    fig = fig_annual_pl_chart()
+    embed_figure(slide, fig, Inches(0.3), Inches(5.8), Inches(12.7), Inches(1.4))
+
+
+def slide_cashflow(prs):
+    slide = blank(prs)
+    add_header_band(slide, "キャッシュフロー計画")
+
+    fig = fig_cashflow_chart()
+    embed_figure(slide, fig, Inches(0.3), Inches(1.1), Inches(7.5), Inches(3.5))
+
+    hdrs_cf = ["", "調達時", "Y1末", "Y2末", "Y3末", "Y4末", "Y5末"]
+    rows_cf = [
+        ["営業CF（万円）",    "─",      "+2,260", "+7,140",  "+14,880", "+27,800", "+48,000"],
+        ["投資CF（万円）",    "▲3,500", "▲1,000", "▲5,000",  "▲8,000",  "▲10,000", "▲5,000"],
+        ["純CF（万円）",      "+3,500", "+1,260", "+2,140",  "+6,880",  "+17,800", "+43,000"],
+        ["累計CF（万円）",    "3,500",  "4,760",  "6,900",   "13,780",  "31,580",  "74,580"],
+    ]
+    table(slide, hdrs_cf, rows_cf, Inches(7.8), Inches(1.1), Inches(5.2), Inches(2.5),
+          hdr_color=ACCENT, font_size=10)
+
+    points = [
+        "資金調達3,500万を起点にY1末で累計CF4,760万（黒字転換・返済原資確保）",
+        "Y2: FC展開への投資5,000万は営業CF7,140万の範囲内でまかなえる",
+        "Y3以降: 投資超過分もFCロイヤルティ等のストック収益で補填、累計CFが急拡大",
+        "Y5末: 累計CF 7.5億円 → 配当・EXIT・追加投資の原資として十分な水準",
+    ]
+    section_box(slide, "CFのポイント", points, Inches(7.8), Inches(3.8), Inches(5.2), ACCENT)
+
+    # 月次Y1イメージ
+    add_rect(slide, Inches(0.3), Inches(4.8), Inches(7.3), Inches(2.4), LIGHT_BG)
+    txt(slide, "■ Y1 月次CF イメージ（肉酒場然・稼働済み前提）",
+        Inches(0.4), Inches(4.85), Inches(7.1), Inches(0.4), size=11, bold=True, color=ACCENT)
+    multi_txt(slide,
+        ["月1〜3：肉酒場然のみ稼働 → 月次CF +100〜150万（立ち上げ費用除く）",
+         "月4〜6：だし然 開業 → 月次CF +200〜280万（稼働率70%）",
+         "月7〜：蕎麦然 開業 → 月次CF +330〜400万（3ブランド揃い踏み）",
+         "Y1末時点：累計CF（資金調達後）約4,760万 → BEP到達"],
+        Inches(0.4), Inches(5.3), Inches(7.1), Inches(1.8),
+        size=10.5, color=TEXT_COLOR)
 
 
 def slide_08_competitive(prs):
@@ -789,15 +1044,15 @@ def slide_10_revenue(prs):
     rows = [
         ["だし 然", "960万円", "15%", "144万円", "20店", "2,880万円"],
         ["肉酒場 然", "1,200万円", "17%", "200万円", "5店", "1,000万円"],
-        ["蕎麦 然", "480万円", "12.5%", "60万円", "30店", "1,800万円"],
+        ["蕎麦 然（小型）", "350万円", "12%", "42万円", "30店", "1,260万円"],
         ["SNS事業部", "─", "─", "83万円", "─", "83万円"],
-        ["合計（安定期）", "─", "─", "─", "55店", "5,763万円〜"],
+        ["合計（安定期）", "─", "─", "─", "55店", "5,223万円〜"],
     ]
     table(slide, hdrs, rows, Inches(6.5), Inches(1.1), Inches(6.5), Inches(3.1), font_size=10)
 
     # ポイント
     points = [
-        "Y1 グループ月次売上合計：約2,640万円（利益率約15%、月次利益約404万円）",
+        "Y1 グループ月次売上：約2,510万円（利益率約15%、月次利益約386万円）",
         "FCロイヤルティはFC40店規模で月1,296万円のストック収益（安定成長）",
         "成長フェーズ（Y3〜）で利益率が改善：規模の経済＋仕入共通化",
         "直営利益＋FCロイヤルティの二重収益でリスク分散",
@@ -813,7 +1068,7 @@ def slide_11_funding(prs):
     add_rect(slide, Inches(0.3), Inches(1.1), Inches(4.5), Inches(1.3), ACCENT)
     txt(slide, "第1回 調達目標", Inches(0.4), Inches(1.15), Inches(4.3), Inches(0.4),
         size=13, color=WHITE)
-    txt(slide, "3,000万円", Inches(0.4), Inches(1.55), Inches(4.3), Inches(0.75),
+    txt(slide, "3,500万円", Inches(0.4), Inches(1.55), Inches(4.3), Inches(0.75),
         size=38, bold=True, color=GOLD, align=PP_ALIGN.CENTER)
 
     add_rect(slide, Inches(5.1), Inches(1.1), Inches(7.9), Inches(1.3), LIGHT_BG)
@@ -826,13 +1081,14 @@ def slide_11_funding(prs):
 
     hdrs = ["用途", "金額", "内訳"]
     rows = [
-        ["だし 然 1号店 開業費", "2,000万円", "内装900万＋厨房450万＋敷金＋運転資金（居抜き活用）"],
-        ["蕎麦 然 1号店 開業費", "700万円", "内装350万＋設備180万＋保証金＋初期運転資金"],
-        ["人材採用・研修費", "200万円", "店長・料理長採用・マニュアル構築"],
-        ["運転資金・マーケ費", "100万円", "グループ管理・SNS・広告・オープン販促"],
-        ["合計", "3,000万円", ""],
+        ["だし 然 1号店 開業費", "2,000万円", "内装900万＋厨房450万＋敷金（60万×3ヶ月）＋運転資金"],
+        ["蕎麦 然 1号店 開業費（小型8坪）", "500万円", "内装200万＋設備150万＋敷金＋初期運転資金"],
+        ["SNSコンサル・スタートダッシュ", "300万円", "外部コンサル起用・開業前3〜6ヶ月集中投資"],
+        ["人材採用・研修費", "300万円", "店長・料理長採用・マニュアル・研修体制構築"],
+        ["運転資金・予備費", "400万円", "グループ管理・広告・オープン販促・予備"],
+        ["合計", "3,500万円", ""],
     ]
-    table(slide, hdrs, rows, Inches(0.3), Inches(2.6), Inches(12.7), Inches(2.8),
+    table(slide, hdrs, rows, Inches(0.3), Inches(2.6), Inches(12.7), Inches(3.2),
           hdr_color=ACCENT, font_size=11)
 
     multi_txt(slide,
@@ -910,8 +1166,11 @@ def main():
     slide_06_niku(prs)
     slide_07_soba(prs)
     slide_08_competitive(prs)
+    slide_sns_marketing(prs)
     slide_09_5year(prs)
     slide_10_revenue(prs)
+    slide_group_annual_pl(prs)
+    slide_cashflow(prs)
     slide_11_funding(prs)
     slide_12_risk(prs)
     slide_13_contact(prs)
