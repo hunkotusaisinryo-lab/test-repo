@@ -20,6 +20,7 @@ from pptx.enum.text import PP_ALIGN
 # ─── 定数 ───────────────────────────────────────────────
 OUTPUT_DIR = Path("/home/user/test-repo/zen/07_融資・投資家資料")
 OUTPUT_FILE = OUTPUT_DIR / "然グループ_統合ピッチデッキ_強化版.pptx"
+LOGO_FILE   = Path("/home/user/test-repo/zen/08_ロゴ・ブランド資産/zen_brand_logo.png")
 
 FONT_NAME = "IPAGothic"
 SLIDE_W = Inches(13.33)
@@ -62,10 +63,10 @@ def add_rect(slide, l, t, w, h, color, line=False):
     return shape
 
 
-def add_header_band(slide, title, color=None):
+def add_header_band(slide, title, color=None, show_logo=True):
     c = color if color else ACCENT
     add_rect(slide, 0, 0, SLIDE_W, HEADER_H, c)
-    txBox = slide.shapes.add_textbox(Inches(0.4), Inches(0.1), Inches(12), HEADER_H - Inches(0.1))
+    txBox = slide.shapes.add_textbox(Inches(0.4), Inches(0.1), Inches(10.5), HEADER_H - Inches(0.1))
     tf = txBox.text_frame
     tf.word_wrap = False
     p = tf.paragraphs[0]
@@ -76,6 +77,9 @@ def add_header_band(slide, title, color=None):
     run.font.color.rgb = WHITE
     run.font.bold = True
     p.alignment = PP_ALIGN.LEFT
+    # ロゴを右上に配置
+    if show_logo and LOGO_FILE.exists():
+        slide.shapes.add_picture(str(LOGO_FILE), Inches(10.8), Inches(0.05), Inches(2.3), Inches(0.82))
 
 
 def txt(slide, text, l, t, w, h, size=14, color=None, bold=False,
@@ -485,11 +489,14 @@ def slide_01_cover(prs):
     slide = blank(prs)
     # 左帯
     add_rect(slide, 0, 0, Inches(4.5), SLIDE_H, ACCENT)
-    # 然 大文字
-    txt(slide, "然", Inches(0), Inches(0.5), Inches(4.5), Inches(4.5),
-        size=200, bold=True, color=GOLD, align=PP_ALIGN.CENTER)
-    txt(slide, "ZEN BRAND", Inches(0), Inches(4.8), Inches(4.5), Inches(0.5),
-        size=14, color=LIGHT_BG, align=PP_ALIGN.CENTER, italic=True)
+    # ロゴ画像（左帯中央に配置）
+    if LOGO_FILE.exists():
+        slide.shapes.add_picture(str(LOGO_FILE), Inches(0.25), Inches(1.2), Inches(4.0), Inches(4.0))
+    else:
+        txt(slide, "然", Inches(0), Inches(0.5), Inches(4.5), Inches(4.5),
+            size=200, bold=True, color=GOLD, align=PP_ALIGN.CENTER)
+    txt(slide, "ZEN BRAND", Inches(0), Inches(5.3), Inches(4.5), Inches(0.5),
+        size=13, color=LIGHT_BG, align=PP_ALIGN.CENTER, italic=True)
     # 右側
     txt(slide, "然グループ", Inches(5), Inches(1.2), Inches(7.8), Inches(1.2),
         size=46, bold=True, color=ACCENT)
@@ -519,6 +526,9 @@ def slide_01_cover(prs):
 def slide_02_vision(prs):
     slide = blank(prs)
     add_header_band(slide, "グループビジョン")
+    # ロゴを右上に小さく配置
+    if LOGO_FILE.exists():
+        slide.shapes.add_picture(str(LOGO_FILE), Inches(10.8), Inches(0.05), Inches(2.3), Inches(0.82))
     txt(slide, "「食の全シーンに、然を。」",
         Inches(1), Inches(1.1), Inches(11), Inches(0.9),
         size=32, bold=True, color=ACCENT, align=PP_ALIGN.CENTER)
