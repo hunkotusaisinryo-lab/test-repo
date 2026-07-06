@@ -3,6 +3,8 @@ name: Sync to OneDrive
 on:
   push:
     branches: [main]
+    paths:
+      - 'zen/**'
   workflow_dispatch:
 
 jobs:
