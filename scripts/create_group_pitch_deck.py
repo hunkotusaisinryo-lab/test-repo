@@ -20,7 +20,12 @@ from pptx.enum.text import PP_ALIGN
 # ─── 定数 ───────────────────────────────────────────────
 OUTPUT_DIR = Path("/home/user/test-repo/zen/07_融資・投資家資料")
 OUTPUT_FILE = OUTPUT_DIR / "然グループ_統合ピッチデッキ_強化版.pptx"
-LOGO_FILE   = Path("/home/user/test-repo/zen/08_ロゴ・ブランド資産/zen_brand_logo.png")
+LOGO_DIR    = Path("/home/user/test-repo/zen/08_ロゴ・ブランド資産")
+LOGO_FILE   = LOGO_DIR / "zen_brand_logo.png"
+LOGO_GROUP  = LOGO_DIR / "ZEN_GROUP_LOGO.png"
+LOGO_DASHI  = LOGO_DIR / "ZEN_DASHI_LOGO.png"
+LOGO_NIKU   = LOGO_DIR / "ZEN_NIKU_LOGO.png"
+LOGO_SOBA   = LOGO_DIR / "ZEN_SOBA_LOGO.png"
 
 FONT_NAME = "IPAGothic"
 SLIDE_W = Inches(13.33)
@@ -489,14 +494,20 @@ def slide_01_cover(prs):
     slide = blank(prs)
     # 左帯
     add_rect(slide, 0, 0, Inches(4.5), SLIDE_H, ACCENT)
-    # ロゴ画像（左帯中央に配置）
-    if LOGO_FILE.exists():
+    # グループロゴ（左帯中央に配置）
+    if LOGO_GROUP.exists():
+        slide.shapes.add_picture(str(LOGO_GROUP), Inches(0.1), Inches(1.8), Inches(4.3), Inches(1.3))
+    elif LOGO_FILE.exists():
         slide.shapes.add_picture(str(LOGO_FILE), Inches(0.25), Inches(1.2), Inches(4.0), Inches(4.0))
     else:
         txt(slide, "然", Inches(0), Inches(0.5), Inches(4.5), Inches(4.5),
             size=200, bold=True, color=GOLD, align=PP_ALIGN.CENTER)
-    txt(slide, "ZEN BRAND", Inches(0), Inches(5.3), Inches(4.5), Inches(0.5),
-        size=13, color=LIGHT_BG, align=PP_ALIGN.CENTER, italic=True)
+    # 3ブランドロゴを縦に並べる
+    for i, logo in enumerate([LOGO_DASHI, LOGO_NIKU, LOGO_SOBA]):
+        if logo.exists():
+            slide.shapes.add_picture(str(logo), Inches(0.3), Inches(3.3 + i * 1.1), Inches(3.9), Inches(0.95))
+    txt(slide, "ZEN BRAND", Inches(0), Inches(6.55), Inches(4.5), Inches(0.4),
+        size=11, color=LIGHT_BG, align=PP_ALIGN.CENTER, italic=True)
     # 右側
     txt(slide, "然グループ", Inches(5), Inches(1.2), Inches(7.8), Inches(1.2),
         size=46, bold=True, color=ACCENT)
@@ -665,6 +676,9 @@ def slide_05_dashi(prs):
                  "Phase4：海外 台湾・シンガポール（DASHI ZEN）"],
                 Inches(6.8), Inches(1.8), Inches(6.2), ACCENT)
 
+    # だし然ロゴ
+    if LOGO_DASHI.exists():
+        slide.shapes.add_picture(str(LOGO_DASHI), Inches(6.6), Inches(1.75), Inches(2.8), Inches(0.7))
     # P&Lグラフ
     fig = fig_pl_chart()
     embed_figure(slide, fig, Inches(0.3), Inches(3.8), Inches(5.8), Inches(3.3))
@@ -718,6 +732,9 @@ def slide_06_niku(prs):
     section_box(slide, "戦略的位置づけ", right_items,
                 Inches(6.8), Inches(1.8), Inches(6.2), ACCENT)
 
+    # 肉酒場然ロゴ
+    if LOGO_NIKU.exists():
+        slide.shapes.add_picture(str(LOGO_NIKU), Inches(6.6), Inches(1.75), Inches(2.8), Inches(0.7))
     kpis = [("月次売上目標", "1,200万円", DARK_RED),
             ("月次営業利益", "200万円", ACCENT),
             ("利益率", "17%", DARK_RED),
@@ -763,6 +780,9 @@ def slide_07_soba(prs):
     section_box(slide, "FC展開モデル", right_items,
                 Inches(6.8), Inches(1.8), Inches(6.2), ACCENT)
 
+    # 蕎麦然ロゴ
+    if LOGO_SOBA.exists():
+        slide.shapes.add_picture(str(LOGO_SOBA), Inches(6.6), Inches(1.75), Inches(2.8), Inches(0.7))
     # 回収シミュレーショングラフ
     fig = fig_recovery_chart()
     embed_figure(slide, fig, Inches(0.3), Inches(4.0), Inches(6.0), Inches(3.1))
