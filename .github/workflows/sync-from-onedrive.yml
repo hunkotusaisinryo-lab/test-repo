@@ -29,10 +29,24 @@ jobs:
           printf '[onedrive]\ntype = onedrive\ntoken = %s\ndrive_id = %s\ndrive_type = personal\n' \
             "$RCLONE_TOKEN" "$RCLONE_DRIVE_ID" > ~/.config/rclone/rclone.conf
 
+      - name: OneDriveのフォルダ構造を確認
+        run: |
+          echo "=== OneDriveのルートフォルダ一覧 ==="
+          rclone lsd onedrive: || true
+          echo ""
+          echo "=== 肉酒場然_プロジェクト 配下 ==="
+          rclone lsd "onedrive:肉酒場然_プロジェクト" || true
+          echo ""
+          echo "=== 肉酒場然_プロジェクト/zen 配下 ==="
+          rclone lsd "onedrive:肉酒場然_プロジェクト/zen" || true
+          echo ""
+          echo "=== 全画像ファイル一覧 ==="
+          rclone ls "onedrive:肉酒場然_プロジェクト" --include "*.png" --include "*.jpg" --include "*.jpeg" --include "*.PNG" --include "*.JPG" | head -50 || true
+
       - name: OneDrive → GitHubへ画像ファイルを同期
         run: |
           # OneDriveのzen/フォルダから画像ファイルのみをローカルに同期
-          rclone copy onedrive:肉酒場然_プロジェクト/zen/ zen/ \
+          rclone copy "onedrive:肉酒場然_プロジェクト/zen/" zen/ \
             --include "*.png" \
             --include "*.jpg" \
             --include "*.jpeg" \
