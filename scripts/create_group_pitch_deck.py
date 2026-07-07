@@ -1025,6 +1025,130 @@ def slide_08_competitive(prs):
         size=12, bold=True, color=GOLD, align=PP_ALIGN.CENTER)
 
 
+def slide_competitor_analysis(prs):
+    """競合分析スライド①：6店比較表"""
+    slide = blank(prs)
+    add_header_band(slide, "競合分析  ─  ベンチマーク6店舗の詳細比較")
+
+    # 説明文
+    txt(slide, "調査エリア：恵比寿・新橋・学芸大学（いずれも然グループの出店候補商圏）",
+        Inches(0.4), Inches(1.05), Inches(12.5), Inches(0.4),
+        size=11, color=TEXT_COLOR, italic=True)
+
+    # 比較表
+    hdrs = ["店舗名", "エリア", "業態・コンセプト", "客単価", "席数目安",
+            "こだわり度", "展開可能性", "然グループとの関係"]
+    rows = [
+        ["みなとや",     "大手町",    "老舗和定食・ビジネス層向け",   "¥1,200",  "30〜40席", "★★★☆☆", "★★☆☆☆", "だし然の客層が重なる"],
+        ["ひまり堂",     "恵比寿",    "こだわり出汁・和食カフェ",     "¥1,800",  "20〜25席", "★★★★☆", "★☆☆☆☆", "だし然の直接競合"],
+        ["ひまり商店",   "新橋",      "居酒屋・サラリーマン向け",     "¥3,500",  "40〜50席", "★★☆☆☆", "★★★☆☆", "肉酒場然と客層が重なる"],
+        ["びゃく",       "学芸大学",  "高級和食・職人こだわり",       "¥8,000",  "15〜20席", "★★★★★", "★☆☆☆☆", "価格帯上位・直接競合薄"],
+        ["三谷",         "学芸大学",  "本格蕎麦・職人系単店",         "¥2,500",  "20〜30席", "★★★★☆", "★☆☆☆☆", "蕎麦然の品質ベンチ"],
+        ["なかよし",     "恵比寿",    "カジュアル和食・女性向け",     "¥2,200",  "25〜35席", "★★★☆☆", "★★☆☆☆", "だし然ランチ帯と競合"],
+    ]
+    table(slide, hdrs, rows,
+          Inches(0.3), Inches(1.5), Inches(12.7), Inches(4.5),
+          hdr_color=ACCENT, font_size=10)
+
+    # 凡例
+    txt(slide, "※ こだわり度・展開可能性は5段階評価（★多い＝高い）　客単価は推計値",
+        Inches(0.4), Inches(6.1), Inches(12.0), Inches(0.35),
+        size=9, color=TEXT_COLOR, italic=True)
+
+    txt(slide, "→ 高こだわり×高展開力を両立している競合はゼロ  ─  然グループの独占ゾーン",
+        Inches(0.3), Inches(6.5), Inches(12.7), Inches(0.5),
+        size=13, bold=True, color=GOLD, align=PP_ALIGN.CENTER)
+
+
+def fig_competitor_radar():
+    """競合レーダーチャート"""
+    import matplotlib.patches as mpatches
+    categories = ["こだわり度", "FC展開力", "価格競争力", "SNS発信力", "ブランド統一"]
+    N = len(categories)
+    angles = [n / float(N) * 2 * np.pi for n in range(N)]
+    angles += angles[:1]
+
+    # 各競合のスコア（0〜5）
+    data = {
+        "だし 然":       [4.0, 3.5, 3.5, 4.5, 5.0],
+        "肉酒場 然":     [4.5, 4.2, 3.0, 4.0, 5.0],
+        "蕎麦 然":       [3.5, 4.8, 4.5, 3.5, 5.0],
+        "ひまり堂":      [4.2, 1.0, 2.5, 2.0, 1.5],
+        "びゃく":        [5.0, 1.0, 1.0, 1.5, 1.0],
+        "三谷":          [4.5, 1.0, 2.0, 1.0, 1.0],
+    }
+    colors_map = {
+        "だし 然": MPL_GOLD,
+        "肉酒場 然": MPL_RED,
+        "蕎麦 然": MPL_NAVY,
+        "ひまり堂": "#aaaaaa",
+        "びゃく": "#888888",
+        "三谷": "#666666",
+    }
+
+    fig, ax = plt.subplots(figsize=(5.2, 4.5), subplot_kw=dict(polar=True))
+    fig.patch.set_facecolor(MPL_LIGHT)
+    ax.set_facecolor(MPL_LIGHT)
+
+    for name, vals in data.items():
+        vals_plot = vals + vals[:1]
+        lw = 2.5 if name in ["だし 然", "肉酒場 然", "蕎麦 然"] else 1.2
+        ls = "-" if name in ["だし 然", "肉酒場 然", "蕎麦 然"] else "--"
+        alpha = 0.25 if name in ["だし 然", "肉酒場 然", "蕎麦 然"] else 0.0
+        ax.plot(angles, vals_plot, linewidth=lw, linestyle=ls,
+                color=colors_map[name], label=name)
+        ax.fill(angles, vals_plot, color=colors_map[name], alpha=alpha)
+
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels(categories, fontfamily="IPAGothic", fontsize=9)
+    ax.set_ylim(0, 5)
+    ax.set_yticks([1, 2, 3, 4, 5])
+    ax.set_yticklabels(["1", "2", "3", "4", "5"], fontsize=7, color="gray")
+    ax.grid(color="gray", linestyle="--", linewidth=0.5, alpha=0.5)
+    ax.set_title("競合5軸比較（レーダー）", fontfamily="IPAGothic",
+                 fontsize=11, color=MPL_GREEN, fontweight="bold", pad=15)
+    ax.legend(loc="upper right", bbox_to_anchor=(1.35, 1.1),
+              prop={"family": "IPAGothic", "size": 8})
+    fig.tight_layout()
+    return fig
+
+
+def slide_competitor_strategy(prs):
+    """競合分析スライド②：差別化戦略サマリー"""
+    slide = blank(prs)
+    add_header_band(slide, "競合分析  ─  差別化戦略と勝ち筋")
+
+    # レーダーチャート（左）
+    fig = fig_competitor_radar()
+    embed_figure(slide, fig, Inches(0.3), Inches(1.05), Inches(5.8), Inches(5.2))
+
+    # 右側：差別化ポイントカード
+    insights = [
+        ("ひまり堂（恵比寿）との差",
+         "• こだわり度は同等だが展開力が決定的に違う\n• 然グループはFC化で1店の成功を30店に複製できる\n• ひまり堂は単店の「職人店」─ スケールしない"),
+        ("びゃく・三谷との差",
+         "• 職人系の最高品質だが客単価¥8,000超で市場が狭い\n• 蕎麦然は¥2,500帯で「日常使いできるこだわり蕎麦」\n• 立地も8坪小型で回転率×FC数で勝負"),
+        ("ひまり商店・なかよしとの差",
+         "• 価格帯は近いが「素材・発酵」の軸が弱い\n• 然グループは出汁・麹・発酵を共通コアとして全ブランドが連動\n• SNS情報力で口コミ・インバウンドを自力で取込む"),
+        ("然グループ固有の強み（競合ゼロ）",
+         "• 3ブランド×FC展開：1業態の不振を他で補うリスクヘッジ\n• 素材へのこだわり + FC展開力の両立 = 競合不在ゾーン\n• SNS内製 = 月次マーケ費ゼロで情報優位を維持"),
+    ]
+
+    colors_list = [GOLD, NAVY, DARK_RED, ACCENT]
+    for i, (title, body) in enumerate(insights):
+        ty = Inches(1.1) + i * Inches(1.52)
+        add_rect(slide, Inches(6.3), ty, Inches(6.7), Inches(1.42), LIGHT_BG)
+        add_rect(slide, Inches(6.3), ty, Inches(0.1), Inches(1.42), colors_list[i])
+        txt(slide, title, Inches(6.5), ty + Inches(0.06),
+            Inches(6.4), Inches(0.38), size=11, bold=True, color=colors_list[i])
+        txt(slide, body, Inches(6.5), ty + Inches(0.44),
+            Inches(6.4), Inches(0.95), size=9.5, color=TEXT_COLOR)
+
+    txt(slide, "結論：然グループは「こだわり × スケール」の両立という、現状競合が存在しないポジションを確立する",
+        Inches(0.3), Inches(6.6), Inches(12.7), Inches(0.5),
+        size=11, bold=True, color=GOLD, align=PP_ALIGN.CENTER)
+
+
 def slide_09_5year(prs):
     slide = blank(prs)
     add_header_band(slide, "5カ年数値計画")
@@ -1203,6 +1327,8 @@ def main():
     slide_06_niku(prs)
     slide_07_soba(prs)
     slide_08_competitive(prs)
+    slide_competitor_analysis(prs)
+    slide_competitor_strategy(prs)
     slide_sns_marketing(prs)
     slide_09_5year(prs)
     slide_10_revenue(prs)
