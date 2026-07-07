@@ -1,0 +1,58 @@
+name: OneDriveからGitHubへ同期
+
+on:
+  schedule:
+    - cron: '0 * * * *'   # 毎時0分に自動実行
+  workflow_dispatch:        # 手動実行も可能
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: rcloneをインストール
+        run: curl https://rclone.org/install.sh | sudo bash
+
+      - name: rcloneを設定
+        env:
+          RCLONE_TOKEN: ${{ secrets.RCLONE_ONEDRIVE_TOKEN }}
+          RCLONE_DRIVE_ID: ${{ secrets.RCLONE_ONEDRIVE_DRIVE_ID }}
+        run: |
+          mkdir -p ~/.config/rclone
+          printf '[onedrive]\ntype = onedrive\ntoken = %s\ndrive_id = %s\ndrive_type = personal\n' \
+            "$RCLONE_TOKEN" "$RCLONE_DRIVE_ID" > ~/.config/rclone/rclone.conf
+
+      - name: OneDrive → GitHubへ画像ファイルを同期
+        run: |
+          # OneDriveのzen/フォルダから画像ファイルのみをローカルに同期
+          rclone copy onedrive:肉酒場然_プロジェクト/zen/ zen/ \
+            --include "*.png" \
+            --include "*.jpg" \
+            --include "*.jpeg" \
+            --include "*.webp" \
+            --include "*.PNG" \
+            --include "*.JPG" \
+            --include "*.JPEG" \
+            --progress \
+            --verbose
+
+      - name: 変更があればコミット・プッシュ
+        run: |
+          git config user.name "OneDrive Sync Bot"
+          git config user.email "noreply@anthropic.com"
+          git add zen/
+          if git diff --staged --quiet; then
+            echo "新しい画像ファイルなし・スキップ"
+          else
+            CHANGED=$(git diff --staged --name-only | wc -l)
+            git commit -m "OneDriveから画像を同期 (${CHANGED}ファイル) $(date '+%Y-%m-%d %H:%M')"
+            git push origin main
+            echo "同期完了: ${CHANGED}ファイルをプッシュしました"
+          fi
