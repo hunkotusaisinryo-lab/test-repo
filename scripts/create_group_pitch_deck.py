@@ -349,20 +349,17 @@ def fig_competitive_map():
     ax.set_facecolor(MPL_LIGHT)
 
     competitors = [
-        ("だし 然", 4.0, 3.5, MPL_GOLD, 120, True),
-        ("肉酒場 然", 4.5, 4.2, MPL_RED, 120, True),
-        ("蕎麦 然", 2.5, 4.8, MPL_NAVY, 120, True),
-        # ベンチマーク：だし然比較
-        ("茅乃舎", 4.5, 1.5, "gray", 80, False),
-        ("AFURI", 3.8, 1.8, "gray", 80, False),
-        # ベンチマーク：肉酒場然比較
-        ("鳥貴族", 2.0, 4.0, "gray", 80, False),
-        ("串カツ田中", 2.2, 4.5, "gray", 80, False),
-        ("塚田農場", 3.2, 3.0, "gray", 80, False),
-        # ベンチマーク：蕎麦然比較
-        ("富士そば", 2.0, 3.5, "gray", 80, False),
-        ("ゆで太郎", 1.8, 4.2, "gray", 80, False),
-        ("高級和食", 5.0, 1.0, "gray", 80, False),
+        # 然グループ3ブランド
+        ("だし 然", 4.0, 3.5, MPL_GOLD, 130, True),
+        ("肉酒場 然", 4.5, 4.2, MPL_RED, 130, True),
+        ("蕎麦 然", 2.5, 4.8, MPL_NAVY, 130, True),
+        # 実在競合（恵比寿・新橋・学芸大学エリア）
+        ("みなとや（大手町）", 3.5, 2.0, "#888", 80, False),   # 和食系・立地強
+        ("ひまり堂（恵比寿）", 4.2, 1.8, "#888", 80, False),   # こだわり系・単店
+        ("ひまり商店（新橋）", 3.0, 2.5, "#888", 80, False),   # 居酒屋系・サラリーマン向け
+        ("びゃく（学芸大学）", 4.8, 1.2, "#888", 80, False),   # 高品質・拡張性低
+        ("三谷（学芸大学）", 4.6, 1.5, "#888", 80, False),     # 職人系・単店
+        ("なかよし（恵比寿）", 3.2, 2.8, "#888", 80, False),   # カジュアル和食
     ]
 
     for name, x, y, color, size, bold in competitors:
@@ -1020,8 +1017,11 @@ def slide_08_competitive(prs):
         txt(slide, body, lx + Inches(0.18), ty + Inches(0.48),
             Inches(6.8), Inches(0.6), size=10, color=TEXT_COLOR)
 
+    txt(slide, "調査対象：みなとや・ひまり堂・ひまり商店・びゃく・三谷・なかよし（恵比寿/新橋/学芸大学）→ いずれも「こだわり×展開力」の両立なし",
+        Inches(0.3), Inches(6.1), Inches(12.7), Inches(0.4),
+        size=9, color=TEXT_COLOR, align=PP_ALIGN.CENTER)
     txt(slide, "→ 「素材へのこだわり × FC展開力」が高水準で共存する競合不在のゾーン",
-        Inches(0.3), Inches(6.4), Inches(12.7), Inches(0.5),
+        Inches(0.3), Inches(6.5), Inches(12.7), Inches(0.5),
         size=12, bold=True, color=GOLD, align=PP_ALIGN.CENTER)
 
 
