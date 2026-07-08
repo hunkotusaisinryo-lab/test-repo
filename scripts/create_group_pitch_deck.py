@@ -1149,6 +1149,108 @@ def slide_competitor_strategy(prs):
         size=11, bold=True, color=GOLD, align=PP_ALIGN.CENTER)
 
 
+def fig_business_model_comparison():
+    """ビジネスモデル比較：単店職人 vs 然グループ FC"""
+    fig, axes = plt.subplots(1, 2, figsize=(9.5, 3.8))
+    fig.patch.set_facecolor(MPL_LIGHT)
+
+    # 左：競合（単店職人）モデルのキャッシュフローイメージ
+    ax1 = axes[0]
+    ax1.set_facecolor(MPL_LIGHT)
+    years = ["1年目", "3年目", "5年目", "10年目"]
+    rival_cf = [100, 150, 160, 170]   # 単店頭打ち
+    ax1.bar(years, rival_cf, color="#aaaaaa", alpha=0.8)
+    ax1.set_title("競合（単店職人モデル）", fontfamily="IPAGothic", fontsize=10,
+                  color="#666666")
+    ax1.set_ylabel("月次売上（万円）", fontfamily="IPAGothic", fontsize=9)
+    ax1.set_ylim(0, 600)
+    for i, v in enumerate(rival_cf):
+        ax1.text(i, v + 8, f"{v}万", ha="center", fontfamily="IPAGothic", fontsize=9, color="#555")
+    ax1.annotate("⚠ 単店で頭打ち\nスケールしない", xy=(3, 170), xytext=(2.2, 320),
+                 arrowprops=dict(arrowstyle="->", color="#cc4444"),
+                 fontfamily="IPAGothic", fontsize=9, color="#cc4444")
+    ax1.spines[["top", "right"]].set_visible(False)
+
+    # 右：然グループ FC展開モデル
+    ax2 = axes[1]
+    ax2.set_facecolor(MPL_LIGHT)
+    zen_cf = [120, 300, 600, 1700]  # FC店舗数に応じてスケール
+    bars = ax2.bar(years, zen_cf, color=[MPL_GOLD, MPL_GOLD, MPL_GREEN, MPL_GREEN], alpha=0.85)
+    ax2.set_title("然グループ（FC展開モデル）", fontfamily="IPAGothic", fontsize=10,
+                  color=MPL_GREEN)
+    ax2.set_ylabel("月次グループ売上（万円）", fontfamily="IPAGothic", fontsize=9)
+    ax2.set_ylim(0, 2200)
+    for i, v in enumerate(zen_cf):
+        ax2.text(i, v + 30, f"{v}万", ha="center", fontfamily="IPAGothic", fontsize=9,
+                 color=MPL_GREEN, fontweight="bold")
+    ax2.annotate("FC×複数ブランドで\n10倍以上にスケール", xy=(3, 1700), xytext=(2.0, 1900),
+                 arrowprops=dict(arrowstyle="->", color=MPL_GREEN),
+                 fontfamily="IPAGothic", fontsize=9, color=MPL_GREEN)
+    ax2.spines[["top", "right"]].set_visible(False)
+
+    fig.tight_layout(pad=2.0)
+    return fig
+
+
+def slide_differentiation_deep(prs):
+    """差別化深掘りスライド：FCモデル × 発酵コアの独自性"""
+    slide = blank(prs)
+    add_header_band(slide, "差別化の本質  ─  FCモデル × 発酵・出汁コアが生む参入障壁")
+
+    # ── 上段：ビジネスモデル比較チャート ──
+    fig = fig_business_model_comparison()
+    embed_figure(slide, fig, Inches(0.3), Inches(1.05), Inches(9.8), Inches(3.4))
+
+    # 右上：FC優位性の数値サマリー
+    fc_points = [
+        ("1店→55店への複製力", "成功レシピをFC化で横展開\n競合は単店の技術・関係性に依存"),
+        ("ロイヤルティ収入", "売上の3〜4%が直営費用ゼロで入る\n店舗数×ロイヤルティ＝純粋な利益エンジン"),
+        ("リスク分散", "3ブランド×FC＝景気・トレンドに左右されない\n単店競合は1業態の不振で即ダメージ"),
+    ]
+    for i, (title, body) in enumerate(fc_points):
+        ty = Inches(1.1) + i * Inches(1.1)
+        add_rect(slide, Inches(10.3), ty, Inches(2.9), Inches(1.0), LIGHT_BG)
+        add_rect(slide, Inches(10.3), ty, Inches(0.08), Inches(1.0), GOLD)
+        txt(slide, title, Inches(10.45), ty + Inches(0.04),
+            Inches(2.7), Inches(0.35), size=9.5, bold=True, color=GOLD)
+        txt(slide, body, Inches(10.45), ty + Inches(0.38),
+            Inches(2.7), Inches(0.58), size=8.5, color=TEXT_COLOR)
+
+    # ── 下段：発酵・出汁コア ──
+    add_rect(slide, Inches(0.3), Inches(4.6), Inches(12.7), Inches(0.38), ACCENT)
+    txt(slide, "素材・発酵コアの独自性  ─  競合が真似できない「知識資産」",
+        Inches(0.5), Inches(4.63), Inches(12.3), Inches(0.35),
+        size=12, bold=True, color=WHITE)
+
+    ferment_items = [
+        ("出汁の科学的再現性",
+         "昆布・鰹・椎茸の配合レシピを数値化\n職人の勘ではなく「再現できる出汁」\n→ FC加盟店でも同品質を担保できる",
+         GOLD),
+        ("麹・発酵の内製ノウハウ",
+         "麹仕入れKg/¥1,300（税抜）から\n塩麹・醤油麹・発酵調味料を内製化\n→ 原価コントロールと差別化を同時実現",
+         NAVY),
+        ("競合に真似されない理由",
+         "ひまり堂・三谷・びゃくは職人個人の感覚に依存\n然グループは「再現可能なレシピ資産」として蓄積\n→ 人が替わっても品質が変わらない = FC化の前提",
+         ACCENT),
+        ("グループ横断のシナジー",
+         "だし然の出汁知識 → 蕎麦然のつゆに応用\n麹・発酵は全ブランドの共通コア食材\n→ R&Dコストをグループで共有、競合はブランドごとに個別対応",
+         DARK_RED),
+    ]
+
+    for i, (title, body, color) in enumerate(ferment_items):
+        lx = Inches(0.3) + i * Inches(3.2)
+        add_rect(slide, lx, Inches(5.05), Inches(3.05), Inches(2.1), LIGHT_BG)
+        add_rect(slide, lx, Inches(5.05), Inches(3.05), Inches(0.07), color)
+        txt(slide, title, lx + Inches(0.1), Inches(5.13),
+            Inches(2.85), Inches(0.35), size=10, bold=True, color=color)
+        txt(slide, body, lx + Inches(0.1), Inches(5.5),
+            Inches(2.85), Inches(1.58), size=8.5, color=TEXT_COLOR)
+
+    txt(slide, "→ 「再現可能なこだわり」という矛盾を解決しているのが然グループだけ",
+        Inches(0.3), Inches(7.2), Inches(12.7), Inches(0.35),
+        size=11, bold=True, color=GOLD, align=PP_ALIGN.CENTER)
+
+
 def slide_09_5year(prs):
     slide = blank(prs)
     add_header_band(slide, "5カ年数値計画")
@@ -1329,6 +1431,7 @@ def main():
     slide_08_competitive(prs)
     slide_competitor_analysis(prs)
     slide_competitor_strategy(prs)
+    slide_differentiation_deep(prs)
     slide_sns_marketing(prs)
     slide_09_5year(prs)
     slide_10_revenue(prs)
