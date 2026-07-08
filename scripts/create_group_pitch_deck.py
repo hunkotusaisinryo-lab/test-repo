@@ -236,7 +236,7 @@ def fig_growth_chart():
     ax.spines[["top","right"]].set_visible(False)
     ax.set_title("グループ月商推移（5カ年）", fontfamily="IPAGothic",
                  fontsize=12, color=MPL_GREEN, fontweight="bold", pad=10)
-    fig.tight_layout()
+    fig.subplots_adjust(top=0.88, bottom=0.12, left=0.1, right=0.97)
     return fig
 
 
@@ -252,7 +252,8 @@ def fig_pl_chart():
               for i, v in enumerate(values)]
     colors[-1] = MPL_GREEN
 
-    bars = ax.bar(labels, [abs(v) for v in values], color=colors, alpha=0.9, width=0.6)
+    x_pos = range(len(labels))
+    bars = ax.bar(x_pos, [abs(v) for v in values], color=colors, alpha=0.9, width=0.6)
     for bar, val in zip(bars, values):
         ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 5,
                 f"{val:+,}万", ha="center", va="bottom",
@@ -263,6 +264,7 @@ def fig_pl_chart():
     ax.set_title("だし 然 月次P&L（1店舗・利益率15%）", fontfamily="IPAGothic",
                  fontsize=11, color=MPL_GOLD, fontweight="bold")
     ax.spines[["top","right"]].set_visible(False)
+    ax.set_xticks(list(x_pos))
     ax.set_xticklabels(labels, fontfamily="IPAGothic", fontsize=9)
     fig.tight_layout()
     return fig
@@ -1159,14 +1161,16 @@ def fig_business_model_comparison():
     ax1.set_facecolor(MPL_LIGHT)
     years = ["1年目", "3年目", "5年目", "10年目"]
     rival_cf = [100, 150, 160, 170]   # 単店頭打ち
-    ax1.bar(years, rival_cf, color="#aaaaaa", alpha=0.8)
+    ax1.bar(range(len(years)), rival_cf, color="#aaaaaa", alpha=0.8)
+    ax1.set_xticks(range(len(years)))
+    ax1.set_xticklabels(years, fontfamily="IPAGothic", fontsize=9)
     ax1.set_title("競合（単店職人モデル）", fontfamily="IPAGothic", fontsize=10,
                   color="#666666")
     ax1.set_ylabel("月次売上（万円）", fontfamily="IPAGothic", fontsize=9)
     ax1.set_ylim(0, 600)
     for i, v in enumerate(rival_cf):
         ax1.text(i, v + 8, f"{v}万", ha="center", fontfamily="IPAGothic", fontsize=9, color="#555")
-    ax1.annotate("⚠ 単店で頭打ち\nスケールしない", xy=(3, 170), xytext=(2.2, 320),
+    ax1.annotate("※ 単店で頭打ち\nスケールしない", xy=(3, 170), xytext=(2.0, 340),
                  arrowprops=dict(arrowstyle="->", color="#cc4444"),
                  fontfamily="IPAGothic", fontsize=9, color="#cc4444")
     ax1.spines[["top", "right"]].set_visible(False)
@@ -1175,15 +1179,17 @@ def fig_business_model_comparison():
     ax2 = axes[1]
     ax2.set_facecolor(MPL_LIGHT)
     zen_cf = [120, 300, 600, 1700]  # FC店舗数に応じてスケール
-    bars = ax2.bar(years, zen_cf, color=[MPL_GOLD, MPL_GOLD, MPL_GREEN, MPL_GREEN], alpha=0.85)
+    ax2.bar(range(len(years)), zen_cf, color=[MPL_GOLD, MPL_GOLD, MPL_GREEN, MPL_GREEN], alpha=0.85)
+    ax2.set_xticks(range(len(years)))
+    ax2.set_xticklabels(years, fontfamily="IPAGothic", fontsize=9)
     ax2.set_title("然グループ（FC展開モデル）", fontfamily="IPAGothic", fontsize=10,
                   color=MPL_GREEN)
     ax2.set_ylabel("月次グループ売上（万円）", fontfamily="IPAGothic", fontsize=9)
     ax2.set_ylim(0, 2200)
     for i, v in enumerate(zen_cf):
         ax2.text(i, v + 30, f"{v}万", ha="center", fontfamily="IPAGothic", fontsize=9,
-                 color=MPL_GREEN, fontweight="bold")
-    ax2.annotate("FC×複数ブランドで\n10倍以上にスケール", xy=(3, 1700), xytext=(2.0, 1900),
+                 color=MPL_GREEN)
+    ax2.annotate("FC×複数ブランドで\n10倍以上にスケール", xy=(3, 1700), xytext=(1.8, 1900),
                  arrowprops=dict(arrowstyle="->", color=MPL_GREEN),
                  fontfamily="IPAGothic", fontsize=9, color=MPL_GREEN)
     ax2.spines[["top", "right"]].set_visible(False)
