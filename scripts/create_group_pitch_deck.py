@@ -1300,6 +1300,96 @@ def slide_09_5year(prs):
             size=10, color=WHITE, align=PP_ALIGN.CENTER)
 
 
+def fig_headcount_chart():
+    """採用人数推移グラフ（積み上げ棒グラフ）"""
+    fig, ax = plt.subplots(figsize=(6.5, 3.5))
+    fig.patch.set_facecolor(MPL_LIGHT)
+    ax.set_facecolor(MPL_LIGHT)
+
+    years = ["Y1\n2026", "Y2\n2027", "Y3\n2028", "Y4\n2029", "Y5\n2030"]
+    hq      = [2,  4,  7, 10, 12]   # 本部・SV
+    staff   = [6, 18, 48, 77, 121]  # 店舗社員
+    part    = [9, 27, 66,105, 165]  # アルバイト
+
+    x = np.arange(len(years))
+    w = 0.5
+    b1 = ax.bar(x, hq,    w, label="本部・SV",   color=MPL_NAVY,  alpha=0.9)
+    b2 = ax.bar(x, staff, w, label="店舗社員",   color=MPL_GOLD,  alpha=0.9, bottom=hq)
+    b3 = ax.bar(x, part,  w, label="アルバイト", color="#CCCCCC", alpha=0.9,
+                bottom=[h+s for h,s in zip(hq, staff)])
+
+    totals = [h+s+p for h,s,p in zip(hq, staff, part)]
+    for xi, tot in zip(x, totals):
+        ax.text(xi, tot + 3, f"{tot}名", ha="center", fontfamily="IPAGothic",
+                fontsize=9, color=MPL_GREEN, fontweight="bold")
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(years, fontfamily="IPAGothic", fontsize=9)
+    ax.set_ylabel("人数（名）", fontfamily="IPAGothic", fontsize=9)
+    ax.set_title("グループ総人員推移", fontfamily="IPAGothic",
+                 fontsize=11, color=MPL_GREEN, fontweight="bold")
+    ax.legend(prop={"family": "IPAGothic", "size": 8}, loc="upper left")
+    ax.spines[["top", "right"]].set_visible(False)
+    fig.tight_layout()
+    return fig
+
+
+def slide_hiring_plan(prs):
+    """社員採用計画スライド"""
+    slide = blank(prs)
+    add_header_band(slide, "採用・組織計画  ─  人材投資で成長を支える体制づくり")
+
+    # ── 左：人員推移グラフ ──
+    fig = fig_headcount_chart()
+    embed_figure(slide, fig, Inches(0.3), Inches(1.05), Inches(6.8), Inches(3.5))
+
+    # ── 右：給与レンジ一覧 ──
+    add_rect(slide, Inches(7.3), Inches(1.05), Inches(5.7), Inches(0.38), ACCENT)
+    txt(slide, "職種別 月給レンジ目安", Inches(7.4), Inches(1.08),
+        Inches(5.5), Inches(0.34), size=11, bold=True, color=WHITE)
+
+    salary_rows = [
+        ("執行役員（Y3昇格・初期採用から）", "※別途検討中", "Y1入社→Y3執行役員昇格ルート"),
+        ("エリアSV（スーパーバイザー）",     "38〜45万円/月", "5〜7店舗を担当・Y3〜設置"),
+        ("店長（正社員）",                   "30〜38万円/月＋売上1%インセンティブ", "店舗運営・スタッフ育成"),
+        ("副店長・社員",                     "25〜30万円/月", "調理・ホール・発注"),
+        ("アルバイト",                       "時給1,200〜1,500円", "ホール・キッチン補助"),
+    ]
+    colors_s = [DARK_RED, ACCENT, GOLD, GOLD, RGBColor(0xAA,0xAA,0xAA)]
+    for i, (role, salary, note) in enumerate(salary_rows):
+        ty = Inches(1.53) + i * Inches(0.72)
+        add_rect(slide, Inches(7.3), ty, Inches(5.7), Inches(0.67), LIGHT_BG)
+        add_rect(slide, Inches(7.3), ty, Inches(0.08), Inches(0.67), colors_s[i])
+        txt(slide, role,   Inches(7.45), ty + Inches(0.03), Inches(5.4), Inches(0.3),
+            size=9.5, bold=True, color=colors_s[i])
+        txt(slide, salary, Inches(7.45), ty + Inches(0.33), Inches(5.4), Inches(0.3),
+            size=9, color=TEXT_COLOR)
+        txt(slide, note,   Inches(7.45), ty + Inches(0.50), Inches(5.4), Inches(0.18),
+            size=8, color=TEXT_COLOR, italic=True)
+
+    # ── 下段：年度別採用計画表 ──
+    add_rect(slide, Inches(0.3), Inches(4.65), Inches(12.7), Inches(0.38), NAVY)
+    txt(slide, "年度別採用計画（人件費逆算ベース）", Inches(0.4), Inches(4.68),
+        Inches(12.3), Inches(0.34), size=11, bold=True, color=WHITE)
+
+    hdrs = ["", "Y1 2026", "Y2 2027", "Y3 2028", "Y4 2029", "Y5 2030"]
+    rows = [
+        ["店舗数",          "3店",    "9店",    "22店",   "35店",   "55店"],
+        ["本部・SV（名）",  "2",      "4",      "7",      "10",     "12"],
+        ["店舗社員（名）",  "6",      "18",     "48",     "77",     "121"],
+        ["アルバイト（名）","9",      "27",     "66",     "105",    "165"],
+        ["総人員（名）",    "17",     "49",     "121",    "192",    "298"],
+        ["人件費（万円）",  "3,840",  "9,200",  "16,480", "29,000", "46,000"],
+    ]
+    table(slide, hdrs, rows,
+          Inches(0.3), Inches(5.1), Inches(12.7), Inches(2.2),
+          hdr_color=NAVY, font_size=10)
+
+    txt(slide, "※ 店舗社員は各店2〜3名（店長1＋社員1〜2）、アルバイトは各店3名で計算　／　店長インセンティブ：月次売上の1%（例：だし然960万円/月 → 約9.6万円/月）",
+        Inches(0.4), Inches(7.35), Inches(12.7), Inches(0.3),
+        size=8.5, color=TEXT_COLOR, italic=True)
+
+
 def slide_10_revenue(prs):
     slide = blank(prs)
     add_header_band(slide, "収益モデルサマリー  ─  グループ損益と成長ストック")
@@ -1440,6 +1530,7 @@ def main():
     slide_differentiation_deep(prs)
     slide_sns_marketing(prs)
     slide_09_5year(prs)
+    slide_hiring_plan(prs)
     slide_10_revenue(prs)
     slide_group_annual_pl(prs)
     slide_cashflow(prs)
