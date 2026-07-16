@@ -1353,23 +1353,34 @@ def slide_hiring_plan(prs):
         Inches(5.5), Inches(0.34), size=11, bold=True, color=WHITE)
 
     salary_rows = [
-        ("代表役員（オーナー）",             "検討中　※Y1-Y2は最小限に抑え再投資優先", "Y1-Y2:1名体制　Y3以降:2名体制へ"),
-        ("執行役員（Y3〜・初期採用から昇格）","検討中　※Y3時点で執行役員に昇格",       "Y1入社→Y3執行役員として経営参画"),
-        ("エリアSV（スーパーバイザー）",     "38〜45万円/月",                          "5〜7店舗を担当・Y3〜設置"),
-        ("店長（正社員）",                   "30〜38万円/月 ＋ 売上1%インセンティブ",  "例：月商960万→インセンティブ約9.6万"),
-        ("アルバイト",                       "時給1,200〜1,500円",                     "蕎麦然2名/店、だし然・肉酒場然3名/店"),
+        ("代表役員（オーナー）",
+         "Y1: 30〜40万円/月（個人コンサル報酬と並行）\nY2以降: 未定",
+         "Y1-Y2は1名体制 → Y3から2名体制へ"),
+        ("執行役員候補（Y1-Y2は社員・Y3〜昇格）",
+         "Y1-Y2: 50万円/月（固定）＋ 担当売上1%インセンティブ\nY3〜: 執行役員（報酬は別途設計）",
+         "Y1入社の初期メンバーを3年目に執行役員へ"),
+        ("エリアSV（スーパーバイザー）",
+         "38〜45万円/月",
+         "5〜7店舗担当・Y3〜設置"),
+        ("店長（正社員）",
+         "30〜38万円/月 ＋ 担当店売上1%インセンティブ",
+         "例：月商960万 → インセンティブ約9.6万/月"),
+        ("アルバイト",
+         "時給1,200〜1,500円",
+         "蕎麦然2名/店、だし然・肉酒場然3名/店"),
     ]
-    colors_s = [DARK_RED, ACCENT, GOLD, GOLD, RGBColor(0xAA,0xAA,0xAA)]
+    colors_s = [DARK_RED, DARK_RED, ACCENT, GOLD, RGBColor(0xAA,0xAA,0xAA)]
+    card_h = Inches(0.78)
     for i, (role, salary, note) in enumerate(salary_rows):
-        ty = Inches(1.53) + i * Inches(0.72)
-        add_rect(slide, Inches(7.3), ty, Inches(5.7), Inches(0.67), LIGHT_BG)
-        add_rect(slide, Inches(7.3), ty, Inches(0.08), Inches(0.67), colors_s[i])
-        txt(slide, role,   Inches(7.45), ty + Inches(0.03), Inches(5.4), Inches(0.3),
-            size=9.5, bold=True, color=colors_s[i])
-        txt(slide, salary, Inches(7.45), ty + Inches(0.33), Inches(5.4), Inches(0.3),
-            size=9, color=TEXT_COLOR)
-        txt(slide, note,   Inches(7.45), ty + Inches(0.50), Inches(5.4), Inches(0.18),
-            size=8, color=TEXT_COLOR, italic=True)
+        ty = Inches(1.50) + i * (card_h + Inches(0.04))
+        add_rect(slide, Inches(7.3), ty, Inches(5.7), card_h, LIGHT_BG)
+        add_rect(slide, Inches(7.3), ty, Inches(0.08), card_h, colors_s[i])
+        txt(slide, role,   Inches(7.45), ty + Inches(0.03), Inches(5.4), Inches(0.28),
+            size=9, bold=True, color=colors_s[i])
+        txt(slide, salary, Inches(7.45), ty + Inches(0.30), Inches(5.4), Inches(0.30),
+            size=8.5, color=TEXT_COLOR)
+        txt(slide, note,   Inches(7.45), ty + Inches(0.58), Inches(5.4), Inches(0.20),
+            size=7.5, color=TEXT_COLOR, italic=True)
 
     # ── 下段：年度別採用計画表 ──
     add_rect(slide, Inches(0.3), Inches(4.65), Inches(12.7), Inches(0.38), NAVY)
